@@ -1,0 +1,152 @@
+{
+  "key": "training-sim-20261009",
+  "name": "教培运营模拟数据 20261009",
+  "origin": "simulated",
+  "license": "本项目自行生成，仅用于演示与测试",
+  "schemaVersion": "1",
+  "dataCutoff": "2026-09-30T15:59:59.000Z",
+  "description": "1000名学员、3校区、6类课程、2026年4—9月；所有经营记录为模拟数据。",
+  "expectedRows": {
+    "campus": 3,
+    "course": 6,
+    "class": 50,
+    "student": 1000,
+    "enrollment": 1000,
+    "contract": 1200,
+    "lead": 1300,
+    "trial": 1150,
+    "renewal": 200,
+    "referral": 90,
+    "complaint": 32,
+    "lesson": 2600,
+    "attendance": 50154,
+    "hours": 46127,
+    "refund": 43
+  },
+  "seed": 20261009,
+  "students": 1000,
+  "campuses": 3,
+  "courses": 6,
+  "period": {
+    "start": "2026-04-01",
+    "end": "2026-09-30"
+  },
+  "scenarios": [
+    {
+      "id": "attendance-drop",
+      "classId": "sim:class:001",
+      "startDate": "2026-08-01",
+      "endDate": "2026-08-31",
+      "description": "人为设置出勤概率由0.92降至0.50，用于检验异常拆解，不代表实际机构经营效果"
+    },
+    {
+      "id": "missing-attendance",
+      "classId": "sim:class:002",
+      "date": "2026-04-06",
+      "studentId": "sim:student:0002",
+      "description": "缺失签到必须表示未知"
+    },
+    {
+      "id": "cancelled-lessons",
+      "date": "2026-05-04",
+      "description": "取消课次不计入应出勤或课耗"
+    },
+    {
+      "id": "withdrawal-refund",
+      "date": "2026-06-01",
+      "description": "退班后停止生成签到并退还未消耗课时"
+    }
+  ],
+  "files": [
+    {
+      "kind": "campus",
+      "file": "campus.csv",
+      "rows": 3,
+      "sha256": "dda21545e5ab1df3738597711d5729d8dd49a21ad6aa6450091a8dadf6aef6ca"
+    },
+    {
+      "kind": "course",
+      "file": "course.csv",
+      "rows": 6,
+      "sha256": "ae83b693c3d7bea75cbd733d1cde0f65232ed24a78a92a45e364a4c07561a95d"
+    },
+    {
+      "kind": "class",
+      "file": "class.csv",
+      "rows": 50,
+      "sha256": "baf71d859eab603cbd50082f318ca063fc5ff89e4fdc0ad69c0ab4434835c4ab"
+    },
+    {
+      "kind": "student",
+      "file": "student.csv",
+      "rows": 1000,
+      "sha256": "220b7bedbce4f8b073d4df0055d1813b89a863f6d92baf313049246ffe1b1fd2"
+    },
+    {
+      "kind": "enrollment",
+      "file": "enrollment.csv",
+      "rows": 1000,
+      "sha256": "caea89a2e30c4bd5e39b1524da3cec5f878f9009bee38f0c1e67c17377dd9574"
+    },
+    {
+      "kind": "contract",
+      "file": "contract.csv",
+      "rows": 1200,
+      "sha256": "67d8fe904c96457480a834115b23c0114ff65764e605a17d963e375d30ee2b29"
+    },
+    {
+      "kind": "lead",
+      "file": "lead.csv",
+      "rows": 1300,
+      "sha256": "79591cfbe3f20143ee4b2c3ca1a7f98000d49dbb42b430e8055df45be649620c"
+    },
+    {
+      "kind": "trial",
+      "file": "trial.csv",
+      "rows": 1150,
+      "sha256": "cdce05b64496724f2b91e9093a795f548853e8825163a7daf1aa04deb8d56f8b"
+    },
+    {
+      "kind": "renewal",
+      "file": "renewal.csv",
+      "rows": 200,
+      "sha256": "6c5e5ec52665a9873f906c65ac192d4cd32cc0e3f3398b99b160d13ac9ff2c3d"
+    },
+    {
+      "kind": "referral",
+      "file": "referral.csv",
+      "rows": 90,
+      "sha256": "649d839d04b2681d8fc4dca5a8858aaf58bc776dd3600343a0e079bab50c3006"
+    },
+    {
+      "kind": "complaint",
+      "file": "complaint.csv",
+      "rows": 32,
+      "sha256": "8afc06b79efc84a0ec2281465c151b2db8d4f0f00d3ca0901151114c1902d290"
+    },
+    {
+      "kind": "lesson",
+      "file": "lesson.csv",
+      "rows": 2600,
+      "sha256": "d9ce6a4073915702d33eca2c4ee09f97b0b9be004c915c2a77c06ad3d6968393"
+    },
+    {
+      "kind": "attendance",
+      "file": "attendance.csv",
+      "rows": 50154,
+      "sha256": "51ada8990796775ffa1f166988aa40d33bf01a692ca87b638b64f92e2019eccb"
+    },
+    {
+      "kind": "hours",
+      "file": "hours.csv",
+      "rows": 46127,
+      "sha256": "92a5ddecc0149f35bd589f3d526a3ea70266669ef045f5303126fddbe9fd76b2"
+    },
+    {
+      "kind": "refund",
+      "file": "refund.csv",
+      "rows": 43,
+      "sha256": "f8a502844235cf955dc2dc102be97bfb901f81bee553651286b8ed41045b28a0"
+    }
+  ]
+}

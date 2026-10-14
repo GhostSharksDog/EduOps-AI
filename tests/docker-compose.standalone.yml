@@ -1,0 +1,25 @@
+name: lms-thesis-verification
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    ports: ['25432:5432']
+    environment:
+      POSTGRES_DB: education_cleanup_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: test_password
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d education_cleanup_test']
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    ports: ['28123:8123']
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: test_password
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: '1'
+    tmpfs:
+      - /var/lib/clickhouse

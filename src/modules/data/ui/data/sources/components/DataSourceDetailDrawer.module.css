@@ -1,0 +1,79 @@
+.container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.headerTitle {
+    margin: 0;
+    font-size: 16px;
+}
+
+.headerSubtitle {
+    margin-top: 4px;
+    display: block;
+    font-size: 12px;
+}
+
+.content {
+    padding: 16px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.section {
+    padding: 16px;
+    border-radius: 8px;
+}
+
+.sectionTitle {
+    margin: 0;
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.fieldRow {
+    flex: 1;
+}
+
+.fieldLabel {
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.fieldValue {
+    margin-top: 2px;
+}
+
+.fieldValueSmall {
+    margin-top: 2px;
+    font-size: 12px;
+}
+
+.fieldGroup {
+    display: flex;
+    gap: 16px;
+}
+
+.divider {
+    height: 1px;
+    margin: 4px 0;
+}
+
+.footer {
+    padding: 16px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.ellipsisText {
+    max-width: 60%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

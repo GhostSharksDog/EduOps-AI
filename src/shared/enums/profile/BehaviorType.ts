@@ -1,0 +1,17 @@
+/**
+ * 行为类型枚举
+ */
+export enum BehaviorType {
+  PAGE_VIEW = 'PAGE_VIEW',
+  CLICK = 'CLICK',
+  PURCHASE = 'PURCHASE',
+  SEARCH = 'SEARCH',
+  ADD_TO_CART = 'ADD_TO_CART',
+  FORM_SUBMIT = 'FORM_SUBMIT',
+  SCROLL = 'SCROLL',
+  HOVER = 'HOVER',
+  KEY_PRESS = 'KEY_PRESS',
+  SESSION_START = 'SESSION_START',
+  SESSION_END = 'SESSION_END',
+  CUSTOM = 'CUSTOM'
+}

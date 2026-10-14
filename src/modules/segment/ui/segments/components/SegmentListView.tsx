@@ -1,0 +1,16 @@
+'use client';
+import { useState } from 'react';
+import { Button, Input, Select, Space, Table, Tag } from 'antd';
+import { TeamOutlined } from '@ant-design/icons';
+import { useRouter } from 'next/navigation';
+import PageContainer from '@/shared/ui/dashboard/PageContainer';
+import PageHeader from '@/shared/ui/dashboard/PageHeader';
+import { useSegments } from '../hooks/useSegments';
+import type { SegmentListItemVO } from '@/modules/segment/contracts/schemas/response/segment';
+import { SegmentStatus, SegmentType } from '@/shared/enums';
+export default function SegmentListView() {
+    const router = useRouter(), [page, setPage] = useState(1), [pageSize, setPageSize] = useState(10), [name, setName] = useState(''), [status, setStatus] = useState<SegmentStatus>(), [type, setType] = useState<SegmentType>();
+    const { data, isLoading, refetch } = useSegments({ page, pageSize, name: name || undefined, status, type });
+    const columns = [{ title: '人群名称', dataIndex: 'name', render: (value: string, row: SegmentListItemVO) => <Button type="link" onClick={() => router.push(row.feature?.engine === 'education-attendance-v1' ? '/dashboard/data/portrait?snapshotId=' + row.feature.snapshotId : '/dashboard/segments/' + row.id)}>{value}</Button> }, { title: '类型', dataIndex: 'entityType', render: (value: string) => <Tag>{value === 'STUDENT' ? '学员' : value}</Tag> }, { title: '覆盖人数', render: (_: unknown, row: SegmentListItemVO) => row.feature?.engine === 'education-attendance-v1' && typeof row.feature.memberCount === 'number' ? row.feature.memberCount : '未计算' }, { title: '状态', dataIndex: 'status', render: (value: string) => value === 'ACTIVE' ? '已启用' : value === 'INACTIVE' ? '已停用' : '草稿' }, { title: '操作', render: (_: unknown, row: SegmentListItemVO) => row.feature?.engine === 'education-attendance-v1' ? <Button onClick={() => router.push('/dashboard/data/portrait?snapshotId=' + row.feature?.snapshotId)}>查看画像</Button> : <Button onClick={() => router.push('/dashboard/segments/' + row.id)}>查看配置</Button> }];
+    return <PageContainer><PageHeader title="人群管理" description="查看已保存的人群；在出勤风险人群中建立经过人工确认的成员快照。" iconComponent={TeamOutlined}/><Space wrap style={{ marginBottom: 16 }}><Input.Search placeholder="搜索人群" allowClear onSearch={value => { setPage(1); setName(value); }}/><Select allowClear placeholder="状态" style={{ width: 140 }} value={status} options={[{ value: SegmentStatus.ACTIVE, label: '已启用' }, { value: SegmentStatus.INACTIVE, label: '已停用' }, { value: SegmentStatus.DRAFT, label: '草稿' }]} onChange={value => { setPage(1); setStatus(value); }}/><Select allowClear placeholder="类型" style={{ width: 140 }} value={type} options={[{ value: SegmentType.STUDENT, label: '学员' }, { value: SegmentType.DYNAMIC, label: '动态规则' }, { value: SegmentType.STATIC, label: '静态名单' }]} onChange={value => { setPage(1); setType(value); }}/><Button onClick={() => void refetch()}>刷新列表</Button><Button type="primary" onClick={() => router.push('/dashboard/segments/risk')}>出勤风险人群</Button></Space><Table rowKey="id" columns={columns} dataSource={data?.items ?? []} loading={isLoading} pagination={{ current: page, pageSize, total: data?.totalCount ?? 0, showSizeChanger: true, onChange: (current, size) => { setPage(current); setPageSize(size); } }}/></PageContainer>;
+}

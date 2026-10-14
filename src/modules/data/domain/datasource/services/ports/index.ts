@@ -1,0 +1,2 @@
+export type {DataSourceDomainService} from '@/modules/data/domain/datasource/services/ports/DataSourceDomainService';
+export type {DataSourceQueryDomainService} from '@/modules/data/domain/datasource/services/ports/DataSourceQueryDomainService';

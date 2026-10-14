@@ -1,0 +1,27 @@
+.editorLoader {
+    height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #d9d9d9;
+    border-radius: 6px;
+    background: #fafafa;
+}
+
+.formContainer {
+    width: 100%;
+}
+
+.stepContent {
+    display: block;
+}
+
+.stepContentHidden {
+    display: none;
+}
+
+.footer {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: auto;
+}

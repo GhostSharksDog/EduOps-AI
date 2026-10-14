@@ -1,0 +1,204 @@
+{
+  "dataset": "oulad",
+  "origin": "public",
+  "license": "CC BY 4.0",
+  "source": "https://archive.ics.uci.edu/dataset/349/open+university+learning+analytics+dataset",
+  "download": "https://archive.ics.uci.edu/static/public/349/open%2Buniversity%2Blearning%2Banalytics%2Bdataset.zip",
+  "doi": "10.24432/C5KK69",
+  "archiveSha256": "f2ed1902616c1fe8d2824d872c0b7d2d72be435bf0124d077044fe4be2c6d3e4",
+  "inspectedAt": "2026-10-09T03:02:08.888454+00:00",
+  "timeBasis": "课程批次开始日的相对日期；不推造实际开课日期",
+  "files": [
+    {
+      "file": "assessments.csv",
+      "bytes": 8211,
+      "sha256": "9ce92381e4a0ac457f8e251b2eb2c179ed51e023ab30d1d671a0268bd62316ba",
+      "rows": 206,
+      "columns": [
+        "code_module",
+        "code_presentation",
+        "id_assessment",
+        "assessment_type",
+        "date",
+        "weight"
+      ],
+      "missing": {
+        "code_module": 0,
+        "code_presentation": 0,
+        "id_assessment": 0,
+        "assessment_type": 0,
+        "date": 11,
+        "weight": 0
+      },
+      "invalidReferences": 0,
+      "relativeDayRange": [
+        12,
+        261
+      ]
+    },
+    {
+      "file": "courses.csv",
+      "bytes": 526,
+      "sha256": "4f16eee7454b15e109b0a21a0e43be820e6846ed6f9301bb7feb5ab5ad737a75",
+      "rows": 22,
+      "columns": [
+        "code_module",
+        "code_presentation",
+        "module_presentation_length"
+      ],
+      "missing": {
+        "code_module": 0,
+        "code_presentation": 0,
+        "module_presentation_length": 0
+      },
+      "invalidReferences": 0,
+      "relativeDayRange": [
+        null,
+        null
+      ]
+    },
+    {
+      "file": "studentAssessment.csv",
+      "bytes": 5690483,
+      "sha256": "b1839e17618a5de36b6d189a242d3123f7939a56c8c9ccef0c17b9199c614a6b",
+      "rows": 173912,
+      "columns": [
+        "id_assessment",
+        "id_student",
+        "date_submitted",
+        "is_banked",
+        "score"
+      ],
+      "missing": {
+        "id_assessment": 0,
+        "id_student": 0,
+        "date_submitted": 0,
+        "is_banked": 0,
+        "score": 173
+      },
+      "invalidReferences": 0,
+      "relativeDayRange": [
+        null,
+        null
+      ]
+    },
+    {
+      "file": "studentInfo.csv",
+      "bytes": 3462763,
+      "sha256": "815fbc3e2de29f79900bc63f0345a35db62c9146afaa1d86e7107b8b3beffc60",
+      "rows": 32593,
+      "columns": [
+        "code_module",
+        "code_presentation",
+        "id_student",
+        "gender",
+        "region",
+        "highest_education",
+        "imd_band",
+        "age_band",
+        "num_of_prev_attempts",
+        "studied_credits",
+        "disability",
+        "final_result"
+      ],
+      "missing": {
+        "code_module": 0,
+        "code_presentation": 0,
+        "id_student": 0,
+        "gender": 0,
+        "region": 0,
+        "highest_education": 0,
+        "imd_band": 1111,
+        "age_band": 0,
+        "num_of_prev_attempts": 0,
+        "studied_credits": 0,
+        "disability": 0,
+        "final_result": 0
+      },
+      "invalidReferences": 0,
+      "relativeDayRange": [
+        null,
+        null
+      ]
+    },
+    {
+      "file": "studentRegistration.csv",
+      "bytes": 1132550,
+      "sha256": "bbc87a0de1fe2a9ec6decce1ca6c1a02cf17b54ad3bdcc673fc6413b41c61d47",
+      "rows": 32593,
+      "columns": [
+        "code_module",
+        "code_presentation",
+        "id_student",
+        "date_registration",
+        "date_unregistration"
+      ],
+      "missing": {
+        "code_module": 0,
+        "code_presentation": 0,
+        "id_student": 0,
+        "date_registration": 45,
+        "date_unregistration": 22521
+      },
+      "invalidReferences": 0,
+      "relativeDayRange": [
+        null,
+        null
+      ]
+    },
+    {
+      "file": "studentVle.csv",
+      "bytes": 453836331,
+      "sha256": "52668253d876c5becbcb72185977152700cecab2942aca807fecc3dd54b937f0",
+      "rows": 10655280,
+      "columns": [
+        "code_module",
+        "code_presentation",
+        "id_student",
+        "id_site",
+        "date",
+        "sum_click"
+      ],
+      "missing": {
+        "code_module": 0,
+        "code_presentation": 0,
+        "id_student": 0,
+        "id_site": 0,
+        "date": 0,
+        "sum_click": 0
+      },
+      "invalidReferences": 0,
+      "relativeDayRange": [
+        -25,
+        269
+      ]
+    },
+    {
+      "file": "vle.csv",
+      "bytes": 270612,
+      "sha256": "d7a146497edd0e47ef536144b58796c07b554002d3753e848b8e4cd8a56f4c38",
+      "rows": 6364,
+      "columns": [
+        "id_site",
+        "code_module",
+        "code_presentation",
+        "activity_type",
+        "week_from",
+        "week_to"
+      ],
+      "missing": {
+        "id_site": 0,
+        "code_module": 0,
+        "code_presentation": 0,
+        "activity_type": 0,
+        "week_from": 5243,
+        "week_to": 5243
+      },
+      "invalidReferences": 0,
+      "relativeDayRange": [
+        null,
+        null
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+export { BaseDashboardPage } from './BaseDashboardPage';
+export { LoginPage } from './LoginPage';
+export { TagsPage } from './TagsPage';
+export { TagCategoriesPage } from './TagCategoriesPage';
+export { TagsMonitorPage } from './TagsMonitorPage';
+export { DashboardPage } from './DashboardPage';
+export { DataModelsPage } from './DataModelsPage';
+export { DataSourcesPage } from './DataSourcesPage';
+export { DataImportPage } from './DataImportPage';
+export { RecycleBinPage } from './RecycleBinPage';
+export { SegmentDetailPage } from './SegmentDetailPage';
+export { SettingsPage } from './SettingsPage';
+export { SystemPage } from './SystemPage';
+export { BitmapManagementPage } from './BitmapPage';
+export { AuditLogsPage } from './AuditLogsPage';

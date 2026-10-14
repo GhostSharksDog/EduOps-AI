@@ -1,0 +1,23 @@
+/**
+ * Base status enum for common status values
+ * Used across multiple domain entities
+ */
+export enum Status {
+  DRAFT = 'DRAFT',
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE',
+  DISABLED = 'DISABLED',
+  CALCULATING = 'CALCULATING',
+  DEPRECATED = 'DEPRECATED',
+  VALID = 'VALID',
+  INVALID = 'INVALID',
+  MISSING = 'MISSING',
+  PENDING = 'PENDING',
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED',
+  RUNNING = 'RUNNING',
+  LOCKED = 'LOCKED',
+  PENDING_APPROVAL = 'PENDING_APPROVAL'
+}

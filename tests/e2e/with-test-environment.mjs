@@ -1,0 +1,8 @@
+// 专用验收环境：子进程的数据库与模型连接都显式覆盖，不读取正常模型密钥。
+import {spawn} from 'node:child_process';
+const entry=process.argv[2],args=process.argv.slice(3);
+const allowed=new Set(['node_modules/vitest/vitest.mjs','scripts/import-education-data.ts','tests/e2e/research.mjs','tests/e2e/decision-review.mjs','tests/e2e/decision-finance.mjs','tests/e2e/ux-workflow.mjs','tests/e2e/rag-agent.mjs','tests/e2e/reviewer.mjs','tests/fixtures/prepare-operations.mjs']);
+if(!allowed.has(entry))throw Error('只允许运行明确的本项目验收工具');
+const env={...process.env,DATABASE_URL:'postgresql://postgres:test_password@127.0.0.1:25432/education_cleanup_test',CLICKHOUSE_HOST:'127.0.0.1',CLICKHOUSE_PORT:'28123',CLICKHOUSE_USER:'default',CLICKHOUSE_PASSWORD:'test_password',CLICKHOUSE_DATABASE:'education_cleanup_test',CLICKHOUSE_CLUSTER:'',CLICKHOUSE_REPLICATED_DB:'false',JWT_SECRET:'phase4_test_only_secret_at_least_32_characters',CHAT_API_BASE_URL:'http://127.0.0.1:3391/v1',CHAT_API_KEY:'fixture-only',CHAT_MODEL:'fixture-chat',EMBEDDING_API_BASE_URL:'http://127.0.0.1:3391/v1',EMBEDDING_API_KEY:'fixture-only',EMBEDDING_MODEL:'fixture-embedding',TEST_SERVER_URL:'http://127.0.0.1:3302',TEST_BASE_URL:'http://127.0.0.1:3302',SYSTEM_USER_ID:'6f40f555-5f1b-4d1f-807c-b209e817bfdd',TEST_ARTIFACT_DIR:process.env.TEST_ARTIFACT_DIR??'tests/artifacts/research-qa/test',REDIS_URL:'',NEXT_TELEMETRY_DISABLED:'1'};
+const child=spawn(process.execPath,[...(entry.endsWith('.ts')?['--conditions=react-server','--import','tsx']:[]),entry,...args],{env,stdio:'inherit',windowsHide:true});
+child.on('error',()=>{console.error('测试工具未能启动');process.exitCode=1;});child.on('exit',code=>{process.exitCode=code??1;});

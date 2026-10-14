@@ -1,0 +1,19 @@
+import type { ModelColumnRepository } from '../domain/ports/ModelColumnRepository';
+import type { ModelColumn } from '../domain/data-model/entities/ModelColumn';
+import { ModelColumnAdapterImpl } from './DataModelAdapterImpl';
+import { transaction } from '@/platform/database';
+import { verifyOwnership, createOwnershipError, type TenantFilterOptions } from '@/platform/get-current-tenant';
+import type { ModelColumnRow, DataModelRow } from './row-types';
+import { dataOne, dataRows, insertDataRow, updateDataRow, addDataOwnership } from './sql';
+export class DatabaseModelColumnRepository implements ModelColumnRepository {
+    private readonly adapter = new ModelColumnAdapterImpl();
+    async create(column: ModelColumn, filter?: TenantFilterOptions) { return transaction(async (tx) => { const model = await dataOne<DataModelRow>('SELECT * FROM data_model WHERE id=$1 AND is_deleted=false FOR UPDATE', [column.modelId], tx); if (!model || !verifyOwnership(model.ownedBy, filter) || column.ownedBy !== model.ownedBy)
+        throw createOwnershipError('DataModel', column.modelId); const po = this.adapter.fromModelColumnToModelColumnPO(column), row = await insertDataRow<ModelColumnRow>('model_column', { ...po, createTime: po.createTime ?? new Date(), updateTime: po.updateTime ?? new Date() }, tx); return this.adapter.fromModelColumnPOToModelColumn(row); }); }
+    async findById(id: string, filter?: TenantFilterOptions) { const parts = ['id=$1', 'is_deleted=false'], values: unknown[] = [id]; addDataOwnership(parts, values, filter); const row = await dataOne<ModelColumnRow>('SELECT * FROM model_column WHERE ' + parts.join(' AND '), values); return row ? this.adapter.fromModelColumnPOToModelColumn(row) : null; }
+    async findByModelId(modelId: string, filter?: TenantFilterOptions) { const parts = ['model_id=$1', 'is_deleted=false'], values: unknown[] = [modelId]; addDataOwnership(parts, values, filter); return this.adapter.fromModelColumnPOListToModelColumnList(await dataRows<ModelColumnRow>('SELECT * FROM model_column WHERE ' + parts.join(' AND ') + ' ORDER BY order_index', values)); }
+    async update(column: ModelColumn, filter?: TenantFilterOptions) { return transaction(async (tx) => { const existing = await dataOne<ModelColumnRow>('SELECT * FROM model_column WHERE id=$1 FOR UPDATE', [column.id], tx); if (!existing || !verifyOwnership(existing.ownedBy, filter))
+        throw createOwnershipError('ModelColumn', column.id); const po = this.adapter.fromModelColumnToModelColumnPO(column); const row = await updateDataRow<ModelColumnRow>('model_column', po.id, { name: po.name, displayName: po.displayName, dataType: po.dataType, length: po.length, precision: po.precision, scale: po.scale, isNullable: po.isNullable, defaultValue: po.defaultValue, description: po.description, orderIndex: po.orderIndex, isPrimaryKey: po.isPrimaryKey, feature: po.feature ?? undefined, isDeleted: po.isDeleted, deleteTime: po.isDeleted ? new Date() : null, deletedBy: po.isDeleted ? po.updatedBy : null, updateTime: new Date(), updatedBy: po.updatedBy }, tx); return this.adapter.fromModelColumnPOToModelColumn(row); }); }
+    async delete(id: string, filter?: TenantFilterOptions) { await transaction(async (tx) => { const existing = await dataOne<ModelColumnRow>('SELECT * FROM model_column WHERE id=$1 FOR UPDATE', [id], tx); if (!existing || !verifyOwnership(existing.ownedBy, filter))
+        throw createOwnershipError('ModelColumn', id); await tx.query('UPDATE model_column SET is_deleted=true,delete_time=now() WHERE id=$1', [id]); }); }
+    async deleteByModelId(id: string, filter?: TenantFilterOptions) { const parts = ['model_id=$1'], values: unknown[] = [id]; addDataOwnership(parts, values, filter); await transaction(async (tx) => { await tx.query('UPDATE model_column SET is_deleted=true,delete_time=now() WHERE ' + parts.join(' AND '), values); }); }
+}

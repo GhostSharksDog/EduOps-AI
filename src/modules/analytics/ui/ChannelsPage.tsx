@@ -1,0 +1,30 @@
+'use client';
+import {useEffect,useState} from 'react';
+import Link from 'next/link';
+import {Alert,Button,Card,Collapse,Empty,Flex,Spin,Statistic,Table,Tag,Typography} from 'antd';
+import {ReloadOutlined,RobotOutlined} from '@ant-design/icons';
+import ScopePicker,{type SelectedScope} from './ScopePicker';
+import {metricCodes,metricLabels,type ChannelAnalysis,type ChannelAnalysisGroup,type OperationalMetric} from '../contracts';
+import {useAuthStore} from '@/modules/identity/client';
+import {analysisHref,scopeKey} from '@/shared/lib/analysis-navigation';
+import AnalysisRangeSummary from '@/shared/ui/AnalysisRangeSummary';
+const valueText=(m:OperationalMetric|undefined)=>!m?'未计算':m.value===null?'待核验':m.value.toLocaleString('zh-CN',{maximumFractionDigits:2})+(m.unit==='percent'?'%':m.unit==='currency'?'元':'条');
+export default function ChannelsPage(){
+    const token=useAuthStore(s=>s.token),[selection,setSelection]=useState<SelectedScope|null>(null),[data,setData]=useState<ChannelAnalysis|null>(null),[loading,setLoading]=useState(false),[error,setError]=useState(''),[refresh,setRefresh]=useState(0);
+    const key=selection?scopeKey(selection):'';
+    useEffect(()=>{if(!selection)return;const c=new AbortController();setLoading(true);setError('');setData(null);fetch('/api/analytics/channels/query',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(selection),signal:c.signal}).then(async r=>{const b=await r.json();if(!r.ok||b.status!=='ready')throw new Error(b.message??'渠道分析失败');setData(b.data);}).catch(e=>{if(e.name!=='AbortError')setError(e.message);}).finally(()=>{if(!c.signal.aborted)setLoading(false);});return()=>c.abort();},[key,token,refresh]);
+    const columns=[{title:'来源渠道',key:'channel',fixed:'left' as const,width:150,render:(_:unknown,row:ChannelAnalysisGroup)=><Flex vertical gap={4}><Typography.Text strong>{row.name}</Typography.Text><Typography.Text type="secondary">{row.studentCount}名学员 · {row.contextCount}个校区课程归属</Typography.Text></Flex>},...metricCodes.map(code=>({title:code==='class_fill_rate'?'渠道席位贡献率':metricLabels[code],key:code,width:170,render:(_:unknown,row:ChannelAnalysisGroup)=>{const m=row.analysis.metrics.find(m=>m.code===code);return <Flex vertical gap={3}><Typography.Text strong>{valueText(m)}</Typography.Text>{m&&<Typography.Text type="secondary" style={{fontSize:12}}>{m.unit==='percent'?`${m.numerator??'未知'} / ${m.denominator??'未知'}`:m.unit==='currency'?'已完成退款金额':'有效记录数'}</Typography.Text>}{m?.value===null&&<Typography.Text type="secondary" style={{fontSize:12}}>{m.reason}</Typography.Text>}</Flex>;}})),{title:'继续分析',key:'action',width:115,render:(_:unknown,row:ChannelAnalysisGroup)=>selection&&<Link href={analysisHref('/dashboard/agent',{...selection,scope:{...selection.scope,channelIds:[row.id]}})}>交给Agent解释</Link>}];
+    return <Flex vertical gap={18}>
+        <Flex justify="space-between" wrap gap={12}><div><Typography.Title level={2} style={{marginBottom:6}}>渠道分析</Typography.Title><Typography.Text type="secondary">比较不同来源的招生与后续服务表现，按相同口径核查分子、分母和未知归属。</Typography.Text></div><Button icon={<ReloadOutlined/>} onClick={()=>setRefresh(n=>n+1)} disabled={!selection} loading={loading}>重新查询</Button></Flex>
+        <ScopePicker onChange={setSelection}/>
+        {error&&<Alert type="error" title={error} action={<Button onClick={()=>setRefresh(n=>n+1)}>重试查询</Button>}/>}
+        {loading?<Card><Spin tip="正在按首购关联计算渠道表现"><div style={{height:160}}/></Spin></Card>:data?<>
+            <AnalysisRangeSummary name={data.dataset.name} origin={data.dataset.origin} scope={data.scope} catalog={data.options}/>
+            <Flex gap={16} wrap><Card style={{flex:'1 1 190px'}}><Statistic title="本次展示渠道" value={data.groups.length}/></Card><Card style={{flex:'1 1 190px'}}><Statistic title="未知来源学员（跨课程去重）" value={data.unknown.studentCount}/></Card><Card style={{flex:'1 1 190px'}}><Statistic title="未知校区课程归属" value={data.unknown.contextCount}/></Card><Card style={{flex:'1 1 240px'}}><Typography.Text type="secondary">归属口径</Typography.Text><Typography.Paragraph strong style={{marginTop:8}}>同校区、同课程首次有效首购</Typography.Paragraph><Tag color="blue">续费沿用</Tag></Card></Flex>
+            <Alert type="info" title="渠道席位贡献率共享班级总班额" description="按渠道筛选时，该指标表示渠道学员贡献的席位占全部所选班级容量的比例；分组学员可能重叠，不能累加人数或平均百分比，也不套用满班不足预警。"/>
+            <Card title="八项经营指标对比" extra={selection&&<Link href={analysisHref('/dashboard/agent',selection)}><RobotOutlined/> 分析当前范围</Link>}><Table<ChannelAnalysisGroup> rowKey="id" dataSource={data.groups} columns={columns} pagination={false} scroll={{x:1650}} locale={{emptyText:'所选范围没有渠道分组，请检查来源或切换范围'}}/></Card>
+            <Card title="同批次招生路径 · 30天观察窗口"><Table<ChannelAnalysisGroup> rowKey="id" dataSource={data.groups} pagination={false} scroll={{x:850}} columns={[{title:'渠道',dataIndex:'name'},{title:'获取线索',render:(_,r)=>r.funnel.leads},{title:'有效试听',render:(_,r)=>r.funnel.trialAttended},{title:'30日签约',render:(_,r)=>r.funnel.converted},{title:'试听后签约',render:(_,r)=>r.funnel.afterTrial},{title:'直接签约',render:(_,r)=>r.funnel.direct},{title:'观察状态',render:(_,r)=>r.funnel.complete?<Tag color="green">已完成观察</Tag>:<Tag color="orange">{r.funnel.pending}条待观察 · {r.funnel.missingLinks}条缺少关联</Tag>}]}/></Card>
+            <Collapse items={[{key:'unknown',label:'未知来源的核查线索',children:data.unknown.reasons.length?<Table rowKey="reason" pagination={false} dataSource={data.unknown.reasons} columns={[{title:'无法归属原因',dataIndex:'reason'},{title:'校区课程归属数',dataIndex:'contexts'}]}/>:<Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="当前范围没有未知归属"/>},{key:'evidence',label:'口径、截止时间与数据依据',children:<Flex vertical gap={10}>{data.notes.map(t=><Typography.Text key={t}>{t}</Typography.Text>)}<Typography.Text type="secondary">计算版本：{data.attributionVersion}；已完成导入批次：{data.overall.batches.length}个</Typography.Text>{data.evidence.slice(0,5).map(e=><Typography.Paragraph key={e.id+'@'+e.version} style={{wordBreak:'break-all'}}>{e.summary}<br/><Typography.Text type="secondary">{e.version}</Typography.Text></Typography.Paragraph>)}</Flex>}]}/>
+        </>:!error&&<Empty description="选择经营数据范围后查看渠道分析"/>}
+    </Flex>;
+}

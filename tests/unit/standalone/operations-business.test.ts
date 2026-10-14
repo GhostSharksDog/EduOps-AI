@@ -1,0 +1,29 @@
+import {describe,it,expect} from 'vitest';
+import {calculateOperations,operationalKinds} from '@/modules/analytics/domain/operations';
+import {reportPeriod,previousPeriod} from '@/modules/analytics/domain/period';
+import {evaluateRules} from '@/modules/alert/domain/rules';
+import {generateSimulationV2} from '@/modules/education/domain/simulation-v2';
+import type {EducationSnapshot,RecordKind,StoredEducationRow} from '@/modules/education/contracts';
+const scope={organizationId:'test',authorizedCampusIds:[],startDate:'2026-06-01',endDate:'2026-06-30',campusIds:[],courseIds:[],channelIds:[]};
+function fixture():EducationSnapshot{
+ const records:StoredEducationRow[]=[],add=(kind:RecordKind,id:string,payload:Record<string,unknown>)=>records.push({kind,sourceId:id,payload:{id,...payload},campusId:'c',courseId:'k',classId:'cl',studentId:String(payload.studentId??''),occurredAt:(payload.occurredAt??payload.acquiredAt??payload.signedAt??null) as string|null,relativeDay:null,batchId:'b-'+kind,hash:id});
+ add('class','cl',{capacity:30,startDate:'2026-01-01',endDate:'2026-12-31'});
+ for(const [id,endDate,endReason] of [['s1',null,null],['s2','2026-06-15','completed'],['s3','2026-06-20','withdrawn']])add('enrollment','e'+id,{studentId:id,classId:'cl',startDate:'2026-01-01',endDate,endReason});
+ for(const [id,studentId,renewalEligible] of [['t1','s1','yes'],['duplicate-cohort','s1','yes'],['t2','s2','no'],['t3','s3','yes']])add('contract',id!,{studentId,renewalEligible,signedAt:'2026-05-01T08:00:00Z',endDate:'2026-06-30',purchasedHours:120});
+ for(const [id,date] of [['l1','2026-06-28'],['l2','2026-06-10'],['l3','2026-06-15']])add('lead',id,{acquiredAt:date+'T08:00:00Z',status:id==='l3'?'new':'converted'});
+ add('contract','n1',{studentId:'s1',signedAt:'2026-07-05T08:00:00Z',endDate:'2026-12-31',purchasedHours:120,renewalEligible:'yes',leadId:'l1'});
+ add('contract','n2',{studentId:'s2',signedAt:'2026-07-16T08:00:00Z',endDate:'2026-12-31',purchasedHours:120,renewalEligible:'yes',leadId:'l2'});
+ add('renewal','r1',{contractId:'t1',newContractId:'n1',studentId:'s1',occurredAt:'2026-07-07T08:00:00Z'});
+ for(const [id,amount,status] of [['f1',150,'completed'],['f2',50,'completed'],['f3',999,'revoked']])add('refund',String(id),{contractId:'t2',studentId:'s2',occurredAt:'2026-06-10T08:00:00Z',amount,status,refundedHours:0});
+ add('complaint','c1',{studentId:'s2',occurredAt:'2026-06-11T08:00:00Z',status:'open'});
+ return {dataset:{id:'test',key:'fixture',name:'手工核对',origin:'simulated',license:'test',schemaVersion:'2',dataCutoff:'2026-07-31T15:59:59.999Z',createdAt:'2026-01-01T00:00:00Z',description:''},records,batches:operationalKinds.map(kind=>({id:'b-'+kind,datasetId:'test',kind,filename:kind+'.csv',status:'completed',inputRows:0,acceptedRows:0,rejectedRows:0,duplicateRows:0,issues:[],createdAt:'2026-01-01T00:00:00Z',completedAt:'2026-01-01T00:00:00Z',error:null,fileHash:kind}))};
+}
+describe('经营口径与预警边界',()=>{
+ it('跨月签约按获取批次；续费按到期学生去重，不按合约计两次',()=>{const r=calculateOperations(fixture(),scope),m=(code:string)=>r.metrics.find(m=>m.code===code)!;expect(m('admission_conversion')).toMatchObject({numerator:1,denominator:3,value:33.33});expect(m('renewal_rate')).toMatchObject({numerator:1,denominator:2,value:50});});
+ it('正常结课和退班分别解释，部分退款按完成金额，撤销排除',()=>{const r=calculateOperations(fixture(),scope);expect(r.metrics.find(m=>m.code==='retention_rate')).toMatchObject({value:33.33,details:{completed:1,withdrawn:1}});expect(r.metrics.find(m=>m.code==='refund_amount')).toMatchObject({value:200,unit:'currency'});expect(r.metrics.find(m=>m.code==='complaint_count')).toMatchObject({value:1,unit:'count'});});
+ it('观察未结束或关联缺失不显示完整率',()=>{const s=fixture();s.dataset.dataCutoff='2026-06-30T15:59:59.999Z';const r=calculateOperations(s,scope);expect(r.metrics.find(m=>m.code==='admission_conversion')?.value).toBeNull();expect(r.metrics.find(m=>m.code==='renewal_rate')?.value).toBeNull();s.dataset.dataCutoff='2026-07-31T15:59:59.999Z';s.records=s.records.filter(r=>r.sourceId!=='n1');expect(calculateOperations(s,scope).metrics.find(m=>m.code==='admission_conversion')).toMatchObject({value:null,details:{missingLinks:1}});});
+ it('真实零计数与零分母不同；公开数据不计算经营数字',()=>{const s=fixture();s.records=s.records.filter(r=>!['complaint','lead'].includes(r.kind));const m=calculateOperations(s,scope).metrics;expect(m.find(m=>m.code==='complaint_count')).toMatchObject({value:0,status:'ready'});expect(m.find(m=>m.code==='admission_conversion')?.value).toBeNull();s.dataset.origin='public';expect(calculateOperations(s,scope).metrics.every(m=>m.value===null&&m.status==='not_applicable')).toBe(true);});
+ it('规则阈值、最小样本及未知签到均严格判断',()=>{const data=calculateOperations(fixture(),scope),a=data.metrics.find(m=>m.code==='attendance_rate')!;Object.assign(a,{value:75,numerator:15,denominator:20,status:'ready',unknownCount:0});data.comparison={scope:data.scope,metrics:[{...a,value:80,numerator:16}],changes:[]};expect(evaluateRules(data).hits.map(h=>h.rule)).toContain('attendance_drop');a.denominator=19;expect(evaluateRules(data).hits.map(h=>h.rule)).not.toContain('attendance_drop');a.denominator=20;a.status='insufficient_data';expect(evaluateRules(data).skipped.map(h=>h.rule)).toContain('attendance_drop');});
+ it('自然月与跨年周归属明确',()=>{expect(reportPeriod('weekly','2027-01-01')).toEqual({startDate:'2026-12-28',endDate:'2027-01-03'});expect(previousPeriod({...scope,startDate:'2026-03-01',endDate:'2026-03-31'})).toMatchObject({startDate:'2026-02-01',endDate:'2026-02-28'});});
+ it('模拟数据可重现，含显式关联、资格与结束原因',()=>{const x=generateSimulationV2({seed:20261009,students:100}),y=generateSimulationV2({seed:20261009,students:100});expect(x).toEqual(y);expect(x.dataset.schemaVersion).toBe('2');expect(x.data.contract!.every(c=>c.renewalEligible==='yes'||c.renewalEligible==='no')).toBe(true);expect(x.data.enrollment!.some(e=>e.endReason==='completed')).toBe(true);expect(x.data.enrollment!.some(e=>e.endReason==='withdrawn')).toBe(true);});
+});

@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.example
+*.log
+tests
+coverage
+*.tsbuildinfo
+.tmp/
+datasets/raw/
+datasets/generated/
+.auth/

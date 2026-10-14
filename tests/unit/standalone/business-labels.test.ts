@@ -1,0 +1,54 @@
+import {describe,it,expect} from 'vitest';
+import {buildStudentBusinessFacts,businessFactKinds} from '@/modules/education/contracts';
+import type {EducationSnapshot,RecordKind,StoredEducationRow} from '@/modules/education/contracts';
+import {evaluateBusinessRule,evaluateLeaf} from '@/modules/tag/domain/business-risk';
+import {operationalTagRuleSchema} from '@/modules/tag/contracts';
+import {generateSimulationV3} from '@/modules/education/domain/simulation-v3';
+import {generateSimulationV2} from '@/modules/education/domain/simulation-v2';
+import {riskCrowdProfile} from '@/modules/profile/domain/risk-profile';
+import {sameAnalysisRange,selectionFromSearch,analysisHref,scopeKey} from '@/shared/lib/analysis-navigation';
+const scope={organizationId:'test',authorizedCampusIds:[],startDate:'2026-08-01',endDate:'2026-08-31',campusIds:[],courseIds:[],channelIds:[],dataCutoff:'2026-09-30T15:59:59.999Z'};
+function fixture():EducationSnapshot{
+ const records:StoredEducationRow[]=[];
+ const add=(kind:RecordKind,id:string,payload:Record<string,unknown>,course='a',campus='c')=>records.push({kind,sourceId:id,payload:{id,...payload},campusId:campus,courseId:course,classId:String(payload.classId??''),studentId:String(payload.studentId??''),occurredAt:(payload.occurredAt??payload.signedAt??null) as string|null,relativeDay:null,batchId:'batch-'+kind,hash:id});
+ add('campus','c',{name:'校区'});add('course','a',{name:'数学'});add('course','b',{name:'英语'},'b');
+ for(const id of ['s1','s2','s3'])add('student',id,{displayName:'模拟'+id,gradeBand:'三年级'});
+ for(const course of ['a','b']){add('class','class-'+course,{capacity:20,startDate:'2026-01-01',endDate:'2026-12-31'},course);for(const id of course==='a'?['s1','s2','s3']:['s2'])add('enrollment','enr-'+id+course,{studentId:id,classId:'class-'+course,startDate:'2026-01-01'},course);
+  for(let n=1;n<=4;n++){const at='2026-08-0'+(n+4)+'T08:00:00Z';add('lesson','lesson-'+course+n,{classId:'class-'+course,startsAt:at,status:'completed'},course);for(const id of course==='a'?['s1','s2','s3']:['s2'])add('attendance','sign-'+id+course+n,{studentId:id,lessonId:'lesson-'+course+n,status:course==='b'?'present':'absent',recordedAt:at},course);}}
+ add('contract','t1',{studentId:'s1',signedAt:'2026-01-01T08:00:00Z',endDate:'2026-09-10',purchasedHours:24,renewalEligible:'yes'});
+ add('contract','t2',{studentId:'s2',signedAt:'2026-01-01T08:00:00Z',endDate:'2026-12-31',purchasedHours:24,renewalEligible:'no'});
+ add('contract','t2b',{studentId:'s2',signedAt:'2026-01-01T08:00:00Z',endDate:'2026-09-10',purchasedHours:24,renewalEligible:'yes'},'b');
+ add('contract','t3',{studentId:'s3',signedAt:'2026-01-01T08:00:00Z',endDate:'2026-09-10',purchasedHours:24,renewalEligible:null});
+ add('contract','next',{studentId:'s1',signedAt:'2026-09-05T08:00:00Z',endDate:'2026-12-31',purchasedHours:24,renewalEligible:'yes'});
+ add('renewal','renew',{studentId:'s1',contractId:'t1',newContractId:'next',occurredAt:'2026-09-05T08:00:00Z'});
+ add('hours','h1',{studentId:'s1',contractId:'t1',hours:20,status:'consumed',occurredAt:'2026-08-15T08:00:00Z'});
+ add('hours','hrev',{studentId:'s1',contractId:'t1',hours:2,status:'reversed',occurredAt:'2026-08-16T08:00:00Z'});
+ add('hours','future',{studentId:'s1',contractId:'t1',hours:2,status:'consumed',occurredAt:'2026-09-01T08:00:00Z'});
+ add('refund','f1',{studentId:'s1',contractId:'t1',refundedHours:2,status:'completed',occurredAt:'2026-08-16T08:00:00Z'});
+ add('refund','revoked',{studentId:'s1',contractId:'t1',refundedHours:20,status:'revoked',occurredAt:'2026-08-17T08:00:00Z'});
+ add('refund','full',{studentId:'s2',contractId:'t2',refundedHours:24,status:'completed',occurredAt:'2026-08-16T08:00:00Z'});
+ add('complaint','boundary',{studentId:'s1',occurredAt:'2026-08-02T00:00:00Z',category:'排课',status:'resolved'});
+ add('complaint','early',{studentId:'s2',occurredAt:'2026-08-01T08:00:00Z',category:'排课',status:'open'});
+ add('complaint','future',{studentId:'s2',occurredAt:'2026-09-01T08:00:00Z',category:'排课',status:'open'});
+ const dataset={id:'00000000-0000-4000-8000-000000000002',key:'fixture',name:'模拟核对',origin:'simulated' as const,license:'test',schemaVersion:'3' as const,dataCutoff:'2026-09-30T15:59:59.999Z',description:'模拟',createdAt:'2026-01-01T00:00:00Z'};
+ return {dataset,records,batches:businessFactKinds.map(kind=>({id:'batch-'+kind,datasetId:dataset.id,kind,filename:kind+'.csv',status:'completed',inputRows:0,acceptedRows:0,rejectedRows:0,duplicateRows:0,issues:[],createdAt:dataset.createdAt,completedAt:dataset.dataCutoff,error:null,fileHash:kind}))};
+}
+const low={type:'attendance_below' as const,thresholdPercent:80,minimumDue:4},due={type:'renewal_due' as const,withinDays:30},hours={type:'hours_remaining' as const,maximumHours:8};
+describe('运营标签的历史事实与三态条件',()=>{
+ it('只使用历史截止日前的签约、续费及课耗；课时净余额处理撤销和完成退款',()=>{const c=buildStudentBusinessFacts(fixture(),scope).contexts.find(c=>c.studentId==='s1')!;expect(c.asOf).toBe('2026-08-31');expect(c.contracts).toEqual([{id:'t1',endDate:'2026-09-10',renewalEligible:'yes',renewed:false}]);expect(c.hours).toMatchObject({status:'ready',purchased:24,consumed:18,refunded:2,remaining:4});expect(evaluateLeaf(c,due).state).toBe('true');});
+ it('未来续费生效后不再把旧合约当作待跟进',()=>{const c=buildStudentBusinessFacts(fixture(),{...scope,endDate:'2026-09-06'}).contexts.find(c=>c.studentId==='s1')!;expect(c.contracts.find(c=>c.id==='t1')?.renewed).toBe(true);expect(evaluateLeaf(c,due).state).toBe('false');});
+ it('同学员的不同课程条件不能拼成全部满足',()=>{const r=evaluateBusinessRule(fixture(),scope,{type:'all',conditions:[low,due]});expect(r.members.map(m=>m.studentId)).toEqual(['s1']);expect(r.evaluation).toMatchObject({matched:1,unmatched:1,unknown:1});expect(r.members[0].business?.every(c=>c.courseId==='a')).toBe(true);});
+ it('任一满足先按上下文判断，再对学员去重',()=>{const r=evaluateBusinessRule(fixture(),scope,{type:'any',conditions:[low,due]});expect(r.members.map(m=>m.studentId)).toEqual(['s1','s2','s3']);expect(r.members.filter(m=>m.studentId==='s2')).toHaveLength(1);expect(r.evaluation.unknown).toBe(0);});
+ it('跨校区的条件也不能合并，授权排除不属于用户的校区',()=>{const s=fixture();for(const r of s.records.filter(r=>r.courseId==='b'))r.campusId='other';expect(evaluateBusinessRule(s,scope,{type:'all',conditions:[low,due]}).members.map(m=>m.studentId)).toEqual(['s1']);expect(buildStudentBusinessFacts(s,{...scope,authorizedCampusIds:['other']}).contexts.every(c=>c.campusId==='other')).toBe(true);});
+ it('未知签到不能满足百分比条件；明确已确认缺勤仍可独立匹配',()=>{const s=fixture();s.records=s.records.filter(r=>r.sourceId!=='sign-s1a1');const c=buildStudentBusinessFacts(s,scope).contexts.find(c=>c.studentId==='s1')!;expect(evaluateLeaf(c,low).state).toBe('unknown');expect(evaluateLeaf(c,{type:'absence_count',minimumAbsences:3,minimumDue:4}).state).toBe('true');});
+ it('余额为零、负值、已退班、过期合约和数据不全分别处理',()=>{const s=fixture(),c=buildStudentBusinessFacts(s,scope).contexts.find(c=>c.studentId==='s2'&&c.courseId==='a')!;expect(c.hours).toMatchObject({status:'ready',remaining:0});expect(evaluateLeaf(c,hours).state).toBe('false');s.records.find(r=>r.sourceId==='h1')!.payload.hours=30;expect(buildStudentBusinessFacts(s,scope).contexts.find(c=>c.studentId==='s1')!.hours.status).toBe('unknown');s.records.find(r=>r.sourceId==='enr-s1a')!.payload.endDate='2026-08-20';expect(buildStudentBusinessFacts(s,scope).contexts.find(c=>c.studentId==='s1')!.hours.status).toBe('not_applicable');s.records.find(r=>r.sourceId==='t3')!.payload.endDate='2026-08-30';expect(buildStudentBusinessFacts(s,scope).contexts.find(c=>c.studentId==='s3')!.contracts).toEqual([]);s.batches=s.batches.filter(b=>b.kind!=='refund');expect(evaluateBusinessRule(s,scope,hours).evaluation.unknown).toBeGreaterThan(0);});
+ it('最近30天以发生日期为准，不能从resolved推断历史解决状态',()=>{const r=evaluateBusinessRule(fixture(),scope,{type:'recent_complaint',lookbackDays:30,minimumCount:1});expect(r.members.map(m=>m.studentId)).toEqual(['s1']);expect(r.members[0].reason).toContain('不推断历史处理状态');});
+ it('false AND unknown为false；true OR unknown为true；资格缺失保留未知',()=>{const s=fixture(),c=buildStudentBusinessFacts(s,scope).contexts.find(c=>c.studentId==='s3')!;expect(evaluateLeaf(c,due).state).toBe('unknown');expect(evaluateBusinessRule(s,scope,{type:'all',conditions:[{...low,minimumDue:5},due]}).evaluation.unknown).toBe(0);expect(evaluateBusinessRule(s,scope,{type:'any',conditions:[low,due]}).evaluation.unknown).toBe(0);});
+ it('不可嵌套、不可超过五个条件，额外SQL、服务器身份和非法阈值拒绝',()=>{for(const rule of [{type:'all',conditions:[{type:'all',conditions:[low,due]},due]},{type:'any',conditions:Array(6).fill(low)},{...hours,maximumHours:0},{...due,sql:'SELECT *'}])expect(operationalTagRuleSchema.safeParse(rule).success).toBe(false);});
+ it('冻结画像使用实际业务事实，未来续费和当前处理状态不会污染历史',()=>{const result=evaluateBusinessRule(fixture(),scope,{type:'all',conditions:[low,due]}),snap={id:'snap',datasetId:fixture().dataset.id,segmentId:'segment',sourceTagId:'tag',tagVersion:1,name:'人群',memberCount:result.members.length,createdAt:'',preview:{members:result.members,scope:result.scope,catalog:[],batches:[],evidence:[],dataset:fixture().dataset}};const profile=riskCrowdProfile(snap as never);expect(profile.business).toMatchObject({asOf:'2026-08-31',remainingHours:4,renewalFollowupStudents:1,recentComplaintStudents:1});});
+ it('旧快照不补造经营余额，缺少续费资格的画像不显示完整数字',()=>{const s=fixture(),result=evaluateBusinessRule(s,scope,low),snap={id:'snap',tagVersion:1,memberCount:result.members.length,preview:{members:result.members,scope:result.scope,catalog:[],batches:[],evidence:[],dataset:s.dataset}};expect(riskCrowdProfile(snap as never).business?.renewalFollowupStudents).toBeNull();const legacy={...snap,preview:{...snap.preview,members:result.members.map(({business,...m})=>m)}};expect(riskCrowdProfile(legacy as never).business).toBeUndefined();});
+});
+describe('独立场景与筛选传递',()=>{
+ it('第三版可重现且不修改第二版输出，原有场景继续保留',()=>{const before=generateSimulationV2({seed:20261009,students:100});const x=generateSimulationV3({seed:20261009,students:100});expect(x).toEqual(generateSimulationV3({seed:20261009,students:100}));expect(generateSimulationV2({seed:20261009,students:100})).toEqual(before);expect(x.dataset.schemaVersion).toBe('3');expect(x.scenarios.some(s=>s.id==='review-combination')).toBe(true);});
+ it('公共链接去掉服务器身份，兼容原URL；历史截止和维度有变化不再视为同范围',()=>{const s={datasetId:fixture().dataset.id,scope};const href=analysisHref('/dashboard/agent',s);const parsed=selectionFromSearch(href.slice(href.indexOf('?')))!;expect(parsed).toBeTruthy();expect(parsed.scope).not.toHaveProperty('organizationId');expect(sameAnalysisRange(scope,{...scope,dataCutoff:'2026-08-31T15:59:59.999Z'})).toBe(true);expect(sameAnalysisRange(scope,{...scope,dataCutoff:'2026-08-30T00:00:00Z'})).toBe(false);expect(sameAnalysisRange(scope,{...scope,courseIds:['a']})).toBe(false);expect(scopeKey(s)).toBe(scopeKey({...s,scope:{...parsed.scope,dataCutoff:'2026-08-31T15:59:59.999Z'}}));});
+});

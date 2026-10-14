@@ -1,0 +1,104 @@
+import assert from 'node:assert/strict';
+import {readFile,mkdir,writeFile} from 'node:fs/promises';
+import {parse} from 'csv-parse/sync';
+import {chromium} from '@playwright/test';
+import pg from 'pg';
+const base=process.env.TEST_BASE_URL??'http://127.0.0.1:3302';
+const database=new URL(process.env.DATABASE_URL??'');
+if(!/^http:\/\/(127\.0\.0\.1|localhost):330[23]$/.test(base)||database.hostname!=='127.0.0.1'||!database.pathname.endsWith('_test'))throw Error('只允许专用本机测试数据库和3302/3303服务');
+const login=async username=>{const r=await fetch(base+'/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username,password:process.env.TEST_PASSWORD})});assert.equal(r.status,200);return r.json();};
+const admin=await login('phase2_admin'),viewer=await login('phase2_viewer'),other=await login('phase3_other');
+async function request(path,input,method,identity=admin,expected=200){
+    const r=await fetch(base+path,{method:method??(input===undefined?'GET':'POST'),headers:{Authorization:'Bearer '+identity.token,'Content-Type':'application/json'},...(input===undefined?{}:{body:JSON.stringify(input)})});
+    const text=await r.text();let body;try{body=JSON.parse(text);}catch{throw Error(path+' HTTP '+r.status+' 返回非JSON：'+text.slice(0,100));}assert.equal(r.status,expected,path+' '+JSON.stringify(body).slice(0,500));return body.data;
+}
+const datasets=await request('/api/education/datasets'),sim=datasets.find(d=>d.key==='training-sim-20261009'),pub=datasets.find(d=>d.origin==='public');assert.ok(sim&&pub);
+const scope={startDate:'2026-08-01',endDate:'2026-08-31',campusIds:[],courseIds:[],channelIds:[]},rule={type:'attendance_below',thresholdPercent:80,minimumDue:4};
+const input={datasetId:sim.id,name:'验收出勤风险-'+Date.now(),scope,rule};
+const p1=await request('/api/tags/proposals',input,undefined,admin,201);
+await request('/api/tags/proposals/'+p1.id+'/confirm',{version:1,previewToken:'00000000-0000-4000-8000-000000000001'},undefined,admin,409);
+const first=await request('/api/tags/proposals/preview',{proposalId:p1.id,version:1});assert.ok(first.preview.memberCount>0);
+const folder='datasets/generated/training-sim-20261009/';
+async function csv(file){return parse(await readFile(folder+file+'.csv','utf8'),{columns:true,bom:true});}
+const [lessons,enrollments,attendance]=await Promise.all([csv('lesson'),csv('enrollment'),csv('attendance')]);
+const manual=new Map();
+for(const l of lessons){const day=l.startsAt.slice(0,10);if(l.status!=='completed'||day<scope.startDate||day>scope.endDate)continue;for(const e of enrollments.filter(e=>e.classId===l.classId&&e.startDate<=day&&(!e.endDate||e.endDate>day))){const s=manual.get(e.studentId)??{due:0,present:0,unknown:0};s.due++;const a=attendance.find(a=>a.lessonId===l.id&&a.studentId===e.studentId);if(!a||a.status==='unknown')s.unknown++;else if(a.status==='present')s.present++;manual.set(e.studentId,s);}}
+const expected=[...manual].filter(([,s])=>s.due>=4&&!s.unknown&&s.present/s.due*100<80).map(([id])=>id).sort();assert.deepEqual(first.preview.members.map(s=>s.studentId).sort(),expected);
+const changed=await request('/api/tags/proposals/'+p1.id,{...input,name:input.name+'修订',version:1},'PUT');assert.equal(changed.version,2);assert.equal(changed.preview,null);
+await request('/api/tags/proposals/'+p1.id+'/confirm',{version:1,previewToken:first.preview.token},undefined,admin,409);
+const previewed=await request('/api/tags/proposals/preview',{proposalId:p1.id,version:2});
+await request('/api/tags/proposals/'+p1.id+'/confirm',{version:2,previewToken:first.preview.token},undefined,admin,409);
+const confirmations=await Promise.all([1,2].map(()=>request('/api/tags/proposals/'+p1.id+'/confirm',{version:2,previewToken:previewed.preview.token})));assert.equal(confirmations[0].publishedTagId,confirmations[1].publishedTagId);
+const published=confirmations[0],tagId=published.publishedTagId;
+await request('/api/tags/'+tagId,{name:'绕过规则修改'},'PUT',admin,409);
+await request('/api/tags/'+tagId+'/activate',{},'PUT',admin,409);
+await request('/api/tags/proposals/'+p1.id,{...input,version:2},'PUT',admin,409);
+const ordinaryTag=await fetch(base+'/api/tags/'+tagId,{headers:{Authorization:'Bearer '+admin.token}});assert.equal(ordinaryTag.status,200,'已发布标签详情应兼容旧标签接口');
+const segInput={tagId,tagVersion:2,previewFingerprint:published.preview.fingerprint,name:input.name+'人群'};
+await request('/api/segments/risk-snapshots',{...segInput,tagVersion:1},undefined,admin,409);
+const snapshots=await Promise.all([1,2].map(()=>request('/api/segments/risk-snapshots',segInput)));assert.equal(snapshots[0].id,snapshots[1].id);const snapshot=snapshots[0];assert.equal(snapshot.memberCount,expected.length);
+const profile=await request('/api/profiles/search',{snapshotId:snapshot.id},undefined,viewer);assert.equal(profile.snapshot.memberCount,expected.length);
+const ownLegacySegment=await fetch(base+'/api/segments/'+snapshot.segmentId,{headers:{Authorization:'Bearer '+admin.token}});assert.equal(ownLegacySegment.status,200,'原人群详情可读取新快照');
+const legacyDetail=await ownLegacySegment.json();assert.equal(legacyDetail.memberCount,expected.length);assert.equal(legacyDetail.statistics.totalMembers,expected.length);
+await request('/api/tags/proposals/'+p1.id,undefined,undefined,other,404);
+await request('/api/segments/risk-snapshots/'+snapshot.id,undefined,undefined,other,404);
+await request('/api/profiles/search',{snapshotId:snapshot.id},undefined,other,404);
+const otherTag=await fetch(base+'/api/tags/'+tagId,{headers:{Authorization:'Bearer '+other.token}});assert.equal(otherTag.status,404);
+const otherTags=await(await fetch(base+'/api/tags?keyword='+encodeURIComponent(published.name)+'&ownedBy='+admin.user.ownedBy,{headers:{Authorization:'Bearer '+other.token}})).json();assert.equal(otherTags.totalCount,0);assert.deepEqual(otherTags.items,[]);
+const publicListResponse=await fetch(base+'/api/public/tags',{headers:{'x-tenant-id':other.user.ownedBy}});assert.equal(publicListResponse.status,200,'公开目录只查询明确机构的公开标签');
+assert.deepEqual((await publicListResponse.json()).items,[],'公开目录不能包含私有风险标签');
+const privateValueResponse=await fetch(base+'/api/public/tags/values?tagId='+tagId+'&entityIds=00000000-0000-4000-8000-000000000001',{headers:{'x-tenant-id':other.user.ownedBy}});assert.equal(privateValueResponse.status,404);
+const otherSegment=await fetch(base+'/api/segments/'+snapshot.segmentId,{headers:{Authorization:'Bearer '+other.token}});assert.equal(otherSegment.status,404);
+const otherMembers=await fetch(base+'/api/segments/'+snapshot.segmentId+'/members',{headers:{Authorization:'Bearer '+other.token}});assert.equal(otherMembers.status,404);
+const otherSegments=await(await fetch(base+'/api/segments?name='+encodeURIComponent(snapshot.name)+'&ownedBy='+admin.user.ownedBy,{headers:{Authorization:'Bearer '+other.token}})).json();assert.equal(otherSegments.totalCount,0);assert.deepEqual(otherSegments.items,[]);
+assert.equal((await request('/api/profiles',undefined,undefined,other)).length,0);
+const legacySegmentList=await fetch(base+'/api/segments?name='+encodeURIComponent(segInput.name),{headers:{Authorization:'Bearer '+admin.token}});assert.equal(legacySegmentList.status,200,'原人群列表可读取已计算快照');
+const legacySegments=await legacySegmentList.json();assert.equal(legacySegments.items.find(s=>s.id===snapshot.segmentId)?.memberCount,expected.length);
+const individual=await request('/api/profiles/search',{snapshotId:snapshot.id,entityId:expected[0]});assert.equal(individual.studentId,expected[0]);
+await request('/api/profiles/search',{snapshotId:snapshot.id,entityId:'not-a-member'},undefined,admin,404);
+await request('/api/tags/proposals',input,undefined,viewer,403);
+await request('/api/tags/proposals/preview',{proposalId:p1.id,version:2},undefined,viewer,403);
+await request('/api/tags/proposals/'+p1.id+'/confirm',{version:2,previewToken:published.preview.token},undefined,viewer,403);
+await request('/api/segments/risk-snapshots',segInput,undefined,viewer,403);
+await request('/api/tags/proposals',{...input,scope:{...scope,organizationId:'forged'}},undefined,admin,400);
+const publicDraft=await request('/api/tags/proposals',{...input,datasetId:pub.id},undefined,admin,201);await request('/api/tags/proposals/preview',{proposalId:publicDraft.id,version:1},undefined,admin,400);
+const noObservation=await request('/api/tags/proposals',{...input,scope:{...scope,startDate:'2026-10-01',endDate:'2026-10-31'}},undefined,admin,201);await request('/api/tags/proposals/preview',{proposalId:noObservation.id,version:1},undefined,admin,400);
+const malformed=await fetch(base+'/api/profiles/search',{method:'POST',headers:{Authorization:'Bearer '+admin.token,'Content-Type':'application/json'},body:'{'});assert.equal(malformed.status,400);
+const stale=await request('/api/tags/proposals',{...input,name:'数据变更测试-'+Date.now()},undefined,admin,201),stalePreview=await request('/api/tags/proposals/preview',{proposalId:stale.id,version:1});
+const emptyAttendance=(await readFile(folder+'attendance.csv','utf8')).split(/\r?\n/)[0]+'\n';
+await request('/api/data/import-jobs',{datasetId:sim.id,kind:'attendance',filename:'phase3-empty-'+Date.now()+'.csv',csv:emptyAttendance,mapping:{}});
+await request('/api/tags/proposals/'+stale.id+'/confirm',{version:1,previewToken:stalePreview.preview.token},undefined,admin,409);
+const frozen=await request('/api/profiles/search',{snapshotId:snapshot.id});assert.deepEqual(frozen.snapshot.preview,profile.snapshot.preview);
+const zeroDraft=await request('/api/tags/proposals',{...input,name:'零人快照-'+Date.now(),rule:{type:'absence_count',minimumAbsences:1000,minimumDue:4}},undefined,admin,201),zeroPreview=await request('/api/tags/proposals/preview',{proposalId:zeroDraft.id,version:1});assert.equal(zeroPreview.preview.memberCount,0);
+const zeroPublished=await request('/api/tags/proposals/'+zeroDraft.id+'/confirm',{version:1,previewToken:zeroPreview.preview.token});
+const zeroSnap=await request('/api/segments/risk-snapshots',{tagId:zeroPublished.publishedTagId,tagVersion:1,previewFingerprint:zeroPublished.preview.fingerprint,name:'零人群-'+Date.now()});
+assert.equal((await request('/api/profiles/search',{snapshotId:zeroSnap.id})).attendance.rate,null);
+const overviewResponse=await fetch(base+'/api/overview',{headers:{Authorization:'Bearer '+admin.token}});assert.equal(overviewResponse.status,200);
+const overview=await overviewResponse.json();assert.equal(overview.riskSnapshots.status,'ready');assert.ok(overview.riskSnapshots.items.some(s=>s.id===zeroSnap.id),'总览应展示最近确认的人群');
+const client=new pg.Client({connectionString:process.env.DATABASE_URL});await client.connect();
+try{
+    const count=await client.query('SELECT COUNT(*)::int AS n FROM tag WHERE feature->>\'proposalId\'=$1',[p1.id]);assert.equal(count.rows[0].n,1);
+    const memberCount=await client.query('SELECT COUNT(*)::int AS n,COUNT(DISTINCT member_id)::int AS unique_n FROM segment_member WHERE segment_id=$1',[snapshot.segmentId]);assert.equal(memberCount.rows[0].n,expected.length);assert.equal(memberCount.rows[0].unique_n,expected.length);
+}finally{await client.end();}
+const qa='tests/artifacts/phase3-qa';await mkdir(qa,{recursive:true});
+const browser=await chromium.launch({channel:'msedge',headless:true}),pageErrors=[];
+try{
+    const page=await browser.newPage({viewport:{width:1440,height:1100}});page.on('pageerror',e=>pageErrors.push(e.message));await page.addInitScript(({token,user})=>{localStorage.setItem('auth_token',token);localStorage.setItem('auth_user',JSON.stringify(user));},admin);
+    await page.goto(base+'/dashboard/tags/risk',{waitUntil:'networkidle'});
+    await page.getByRole('textbox',{name:'风险标签名称'}).fill('浏览器演示出勤风险-'+Date.now());await page.getByRole('button',{name:'保存变更并预览',exact:true}).click();
+    await page.getByText('有应出勤的学员',{exact:true}).waitFor({timeout:60000});
+    await page.screenshot({path:qa+'/risk-preview.png',fullPage:true});
+    await page.getByRole('button',{name:'确认发布此版本',exact:true}).click();await page.getByRole('button',{name:'确认发布',exact:true}).click();await page.getByRole('button',{name:'确认建立人群快照',exact:true}).waitFor();
+    await page.screenshot({path:qa+'/risk-published.png',fullPage:true});
+    await page.getByRole('button',{name:'确认建立人群快照',exact:true}).click();await page.getByRole('button',{name:'确认建立',exact:true}).click();
+    await page.waitForURL('**/dashboard/data/portrait?snapshotId=*');await page.getByRole('heading',{name:'学员与人群画像',exact:true}).waitFor();await page.getByText('数据事实',{exact:true}).waitFor({timeout:60000});
+    await page.screenshot({path:qa+'/crowd-profile.png',fullPage:true});
+    await page.getByRole('button',{name:'学员画像',exact:true}).first().click();await page.getByRole('dialog').waitFor();await page.screenshot({path:qa+'/student-profile.png',fullPage:true});await page.getByRole('dialog').getByRole('button',{name:/关\s*闭/}).click();
+    await page.goto(base+'/dashboard/segments/risk',{waitUntil:'networkidle'});await page.getByRole('heading',{name:'出勤风险人群',exact:true}).waitFor();await page.screenshot({path:qa+'/risk-segments.png',fullPage:true});
+    await page.goto(base+'/dashboard/tags/risk?proposalId='+p1.id,{waitUntil:'networkidle'});await page.getByText('已发布 v2',{exact:true}).waitFor();assert.equal(await page.getByRole('textbox',{name:'风险标签名称'}).inputValue(),published.name);
+    await page.goto(base+'/dashboard',{waitUntil:'networkidle'});await page.getByText('最近确认的风险人群',{exact:true}).waitFor();await page.getByRole('link',{name:'查看画像与核查建议',exact:true}).first().waitFor();await page.screenshot({path:qa+'/overview.png',fullPage:true});
+    for(const path of ['/dashboard/tags','/dashboard/segments']){const response=await page.goto(base+path,{waitUntil:'networkidle'});assert.equal(response.status(),200);await page.locator('.ant-table').first().waitFor();}
+    assert.deepEqual(pageErrors,[]);
+}finally{await browser.close();}
+await writeFile(qa+'/verification.json',JSON.stringify({testedAt:new Date().toISOString(),testBaseUrl:base,manualRiskMemberCount:expected.length,concurrentConfirmSingleTag:true,concurrentSnapshotSingleObject:true,oldVersionRejected:true,oldTokenRejected:true,dataChangeRejected:true,frozenSnapshotPreserved:true,publicDataExcluded:true,zeroResultRate:null,noObservations:400,malformedJson:400,viewerWrites:403,otherOrganization:404,nonMember:404,legacyTagMutation:409,legacyListsScoped:true,legacySnapshotDetails:true,overviewLinked:true,browserHumanConfirmation:true,pageErrors},null,2)+'\n');
+console.log('风险标签版本、并发确认、成员快照、权限、人工核对和浏览器流程验收通过；覆盖学员 '+expected.length+' 人');

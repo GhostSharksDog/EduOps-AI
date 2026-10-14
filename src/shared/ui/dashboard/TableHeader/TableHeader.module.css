@@ -1,0 +1,29 @@
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.titleSection {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.rightSection {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.filterWrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.actionsWrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}

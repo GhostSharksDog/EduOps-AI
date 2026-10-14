@@ -1,0 +1,16 @@
+import {execute} from '@/platform/database';
+import {tagOne,tagRows} from './sql';
+import type {TagBitmapSyncState} from './row-types';
+import type {ITagBitmapSyncStateRepository} from '../domain/ports/ITagBitmapSyncStateRepository';
+import type {SyncState,SyncStatus,CreateSyncStateData,UpdateSyncStateData} from '../domain/services/dto/TagBitmapSyncDto';
+export class TagBitmapSyncStateRepositoryImpl implements ITagBitmapSyncStateRepository {
+  private data(r:TagBitmapSyncState):SyncState{return {id:r.id,tagId:r.tagId,syncStatus:r.syncStatus as SyncStatus,lastSyncTime:r.lastSyncTime,lastSyncedCount:r.lastSyncedCount,lastFullSyncTime:r.lastFullSyncTime,mvLastRefreshTime:r.mvLastRefreshTime,tagVersion:r.tagVersion,errorMessage:r.errorMessage,retryCount:r.retryCount};}
+  async findByTagId(id:string,org:string){const row=await tagOne<TagBitmapSyncState>('SELECT * FROM tag_bitmap_sync_state WHERE tag_id=$1 AND owned_by=$2 AND delete_time IS NULL',[id,org]);return row?this.data(row):null;}
+  async findByStatus(statuses:SyncStatus[],org:string){return(await tagRows<TagBitmapSyncState>('SELECT * FROM tag_bitmap_sync_state WHERE sync_status=ANY($1::text[]) AND owned_by=$2 AND delete_time IS NULL',[statuses,org])).map(r=>this.data(r));}
+  async findNeedsIncrementalSync(org:string){return(await tagRows<TagBitmapSyncState>('SELECT DISTINCT s.* FROM tag_bitmap_sync_state s JOIN tag_refresh_log rl ON rl.tag_id=s.tag_id WHERE s.sync_status=$2 AND s.owned_by=$1 AND s.delete_time IS NULL AND rl.is_resolved=FALSE AND rl.occurred_at>s.mv_last_refresh_time',[org,'SYNCED'])).map(r=>this.data(r));}
+  async findByTagVersionMismatch(org:string){return(await tagRows<TagBitmapSyncState>('SELECT s.* FROM tag_bitmap_sync_state s JOIN tag t ON t.id=s.tag_id WHERE s.sync_status=ANY($2::text[]) AND s.owned_by=$1 AND s.delete_time IS NULL AND t.is_deleted=FALSE AND t.current_version_id::text<>s.tag_version',[org,['SYNCED','PENDING','FAILED']])).map(r=>this.data(r));}
+  async create(d:CreateSyncStateData){const row=await tagOne<TagBitmapSyncState>('INSERT INTO tag_bitmap_sync_state(id,tag_id,tag_version,sync_status,owned_by,retry_count,create_time) VALUES($1,$2,$3,$4,$5,0,NOW()) RETURNING *',[crypto.randomUUID(),d.tagId,d.tagVersion,d.syncStatus,d.ownedBy]);return this.data(row!);}
+  async update(id:string,d:UpdateSyncStateData){const params:unknown[]=[id],sets=['update_time=NOW()'];for(const[key,column]of [['syncStatus','sync_status'],['lastSyncTime','last_sync_time'],['lastSyncedCount','last_synced_count'],['lastFullSyncTime','last_full_sync_time'],['mvLastRefreshTime','mv_last_refresh_time'],['tagVersion','tag_version'],['errorMessage','error_message'],['retryCount','retry_count'],['updatedBy','updated_by']]as const)if(d[key]!==undefined){params.push(d[key]);sets.push(column+'=$'+params.length);}if(!await execute('UPDATE tag_bitmap_sync_state SET '+sets.join(',')+' WHERE id=$1',params))throw new Error('标签同步状态不存在');}
+  async softDelete(id:string,by:string){await execute('UPDATE tag_bitmap_sync_state SET delete_time=NOW(),deleted_by=$2 WHERE id=$1',[id,by]);}
+  async findDistinctOwnedBy(){return(await tagRows<{ownedBy:string}>('SELECT DISTINCT owned_by FROM tag_bitmap_sync_state WHERE delete_time IS NULL')).map(r=>r.ownedBy);}
+}

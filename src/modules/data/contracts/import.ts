@@ -1,0 +1,1 @@
+export interface ImportJob {id:string;status:'queued'|'validating'|'running'|'completed'|'failed';sourceId:string;mappingVersion:string;inputRows:number|null;acceptedRows:number|null;rejectedRows:number|null;dataCutoff:string|null;errors:{row:number;field:string;reason:string}[];}

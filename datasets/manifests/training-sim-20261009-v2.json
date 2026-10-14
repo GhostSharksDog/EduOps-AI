@@ -1,0 +1,168 @@
+{
+  "key": "training-sim-20261009-v2",
+  "name": "教培运营模拟数据 20261009 第二版",
+  "origin": "simulated",
+  "license": "本项目自行生成，仅用于演示与测试",
+  "schemaVersion": "2",
+  "dataCutoff": "2026-09-30T15:59:59.999Z",
+  "description": "1000名模拟学员；补齐线索签约、续费资格、在班结束原因和跨月场景。与第一版分开统计。",
+  "expectedRows": {
+    "campus": 3,
+    "course": 6,
+    "class": 50,
+    "student": 1000,
+    "enrollment": 1193,
+    "contract": 1386,
+    "lead": 1300,
+    "trial": 1300,
+    "renewal": 386,
+    "referral": 90,
+    "complaint": 76,
+    "lesson": 2600,
+    "attendance": 30928,
+    "hours": 28258,
+    "refund": 89
+  },
+  "seed": 20261009,
+  "students": 1000,
+  "campuses": 3,
+  "courses": 6,
+  "period": {
+    "start": "2026-04-01",
+    "end": "2026-09-30"
+  },
+  "scenarios": [
+    {
+      "id": "attendance-drop",
+      "classId": "sim:class:001",
+      "startDate": "2026-08-01",
+      "endDate": "2026-08-31",
+      "description": "人为设置出勤概率由0.92降至0.50，用于检验异常拆解，不代表实际机构经营效果"
+    },
+    {
+      "id": "missing-attendance",
+      "classId": "sim:class:002",
+      "date": "2026-04-06",
+      "studentId": "sim:student:0002",
+      "description": "缺失签到必须表示未知"
+    },
+    {
+      "id": "cancelled-lessons",
+      "date": "2026-05-04",
+      "description": "取消课次不计入应出勤或课耗"
+    },
+    {
+      "id": "withdrawal-refund",
+      "date": "2026-06-01",
+      "description": "退班后停止生成签到并退还未消耗课时"
+    },
+    {
+      "id": "cohort-windows",
+      "description": "跨月签约、到期前后续费及未成熟观察窗口"
+    },
+    {
+      "id": "completed-withdrawn",
+      "description": "正常结课、主动退班和迟续费在班间隔"
+    },
+    {
+      "id": "refund-states",
+      "description": "部分退款及撤销退款"
+    },
+    {
+      "id": "monthly-complaints",
+      "description": "多月份多类别客诉"
+    }
+  ],
+  "files": [
+    {
+      "kind": "campus",
+      "file": "campus.csv",
+      "rows": 3,
+      "sha256": "dda21545e5ab1df3738597711d5729d8dd49a21ad6aa6450091a8dadf6aef6ca"
+    },
+    {
+      "kind": "course",
+      "file": "course.csv",
+      "rows": 6,
+      "sha256": "ae83b693c3d7bea75cbd733d1cde0f65232ed24a78a92a45e364a4c07561a95d"
+    },
+    {
+      "kind": "class",
+      "file": "class.csv",
+      "rows": 50,
+      "sha256": "baf71d859eab603cbd50082f318ca063fc5ff89e4fdc0ad69c0ab4434835c4ab"
+    },
+    {
+      "kind": "student",
+      "file": "student.csv",
+      "rows": 1000,
+      "sha256": "220b7bedbce4f8b073d4df0055d1813b89a863f6d92baf313049246ffe1b1fd2"
+    },
+    {
+      "kind": "enrollment",
+      "file": "enrollment.csv",
+      "rows": 1193,
+      "sha256": "02ee56824012a5714b957ccc8f2c8bed628832f1d44fdeb7d07e13b85465a6d1"
+    },
+    {
+      "kind": "contract",
+      "file": "contract.csv",
+      "rows": 1386,
+      "sha256": "a971f1d34b2b40f8ed8a350e2334aaa200b69ea4ebb5e5c501b8a2a62504ea7b"
+    },
+    {
+      "kind": "lead",
+      "file": "lead.csv",
+      "rows": 1300,
+      "sha256": "e8bef2f17eb9b680c8a51201bc37138fbd30f0f82b067e6edf0bfd4c2c20b57c"
+    },
+    {
+      "kind": "trial",
+      "file": "trial.csv",
+      "rows": 1300,
+      "sha256": "72fe9593659ff873329f783cbf366b6ddc9a4f787332d49d07f10d9bf92fbe09"
+    },
+    {
+      "kind": "renewal",
+      "file": "renewal.csv",
+      "rows": 386,
+      "sha256": "0ca6b1e76073bdf31746903c706b33fcd2072acbbb98a704c492e18abff0262f"
+    },
+    {
+      "kind": "referral",
+      "file": "referral.csv",
+      "rows": 90,
+      "sha256": "3b53f9cab7e462e737b754d65a23cd513cf953a7461b43df3c811497f4399ecf"
+    },
+    {
+      "kind": "complaint",
+      "file": "complaint.csv",
+      "rows": 76,
+      "sha256": "a43fb4bccf9e5211afb90c6aa5c7ccc167825dd72e12562f83d448b6b672ac4c"
+    },
+    {
+      "kind": "lesson",
+      "file": "lesson.csv",
+      "rows": 2600,
+      "sha256": "d9ce6a4073915702d33eca2c4ee09f97b0b9be004c915c2a77c06ad3d6968393"
+    },
+    {
+      "kind": "attendance",
+      "file": "attendance.csv",
+      "rows": 30928,
+      "sha256": "976f875c2d5203b4d4742675277cba1551b726a5eb96121a7b264ebc6fcc18c4"
+    },
+    {
+      "kind": "hours",
+      "file": "hours.csv",
+      "rows": 28258,
+      "sha256": "7e09e5b40b3ce1dc35297e031699ea8792cc89054c0005aeb2f7002a969be276"
+    },
+    {
+      "kind": "refund",
+      "file": "refund.csv",
+      "rows": 89,
+      "sha256": "a09c761b1b048babba5b5bc761bd3047c67f44aad411e870f2a1e09041c0e49a"
+    }
+  ]
+}

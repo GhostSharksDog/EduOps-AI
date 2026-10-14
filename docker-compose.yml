@@ -1,0 +1,75 @@
+name: thesis-lms
+x-database-environment: &database-environment
+  DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-local_dev_password}@postgres:5432/metadata_dev
+  SYSTEM_USER_ID: ${SYSTEM_USER_ID:-6f40f555-5f1b-4d1f-807c-b209e817bfdd}
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    ports: ['15434:5432']
+    volumes: ['thesis-pg:/var/lib/postgresql/data']
+    environment:
+      POSTGRES_DB: metadata_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local_dev_password}
+      TZ: Asia/Shanghai
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d metadata_dev']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    restart: unless-stopped
+    ports: ['18123:8123', '19000:9000']
+    volumes: ['thesis-ch:/var/lib/clickhouse']
+    environment:
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-local_ch_password}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: '1'
+      TZ: Asia/Shanghai
+  redis:
+    image: redis:7-alpine
+    profiles: ['cache']
+    ports: ['16379:6379']
+  app:
+    profiles: ['app']
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: runner
+    restart: unless-stopped
+    ports: ['3000:3000']
+    environment:
+      <<: *database-environment
+      JWT_SECRET: ${JWT_SECRET:?configure JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: '8123'
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-local_ch_password}
+      CLICKHOUSE_DATABASE: default
+      CHAT_API_BASE_URL: ${CHAT_API_BASE_URL:-}
+      CHAT_API_KEY: ${CHAT_API_KEY:-}
+      CHAT_MODEL: ${CHAT_MODEL:-}
+      EMBEDDING_API_BASE_URL: ${EMBEDDING_API_BASE_URL:-}
+      EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-}
+    depends_on:
+      postgres: {condition: service_healthy}
+      clickhouse: {condition: service_started}
+  tools:
+    profiles: ['tools']
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: builder
+    environment: *database-environment
+    depends_on:
+      postgres: {condition: service_healthy}
+    # 初始化与账号创建仅由显式run命令执行。
+    command: ['node', '--version']
+volumes:
+  thesis-pg:
+  thesis-ch:
+

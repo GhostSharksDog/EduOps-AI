@@ -1,0 +1,11 @@
+import 'server-only';
+import {educationData} from '@/modules/education/server';
+import {OperationsService} from './services/operations-service';
+import {LearningRepository} from './repositories/learning-repository';
+import {LearningAnalyticsService} from './services/learning-service';
+import {ChannelsService} from './services/channels-service';
+import {OperationsRepository} from './repositories/operations-repository';
+export const operations=new OperationsService(educationData,new OperationsRepository());
+export const channels=new ChannelsService(educationData,operations);
+export const learningAnalytics=new LearningAnalyticsService(new LearningRepository());
+export {getCapability} from './services/service';

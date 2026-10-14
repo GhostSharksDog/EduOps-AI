@@ -1,0 +1,12 @@
+import {queryOne,execute,mapRow} from '@/platform/database';
+import {TEST_USER_ID,generateTestUuid,TEST_DATABASE_CONFIG} from './constants';
+export {TEST_USER_ID,generateTestUuid};
+const created=new Map<string,string[]>();
+function guard(){if(!process.env.DATABASE_URL||!new URL(process.env.DATABASE_URL).pathname.endsWith('_test'))throw new Error('测试种子仅允许专用_test数据库');}
+async function remember(table:string,id:string,sql:string,params:unknown[]){guard();const row=await queryOne(sql,params);created.set(table,[...(created.get(table)??[]),id]);return mapRow<Record<string,unknown>>(row!);}
+export function createTestTagCategory(name?:string){const id=generateTestUuid();return remember('tag_category',id,'INSERT INTO tag_category(id,name,owned_by,path,created_by) VALUES($1,$2,$3,$4,$3) RETURNING *',[id,name??'Test Category '+Date.now(),TEST_USER_ID,'/'+id]);}
+export function createTestTag(categoryId:string,name?:string){const id=generateTestUuid();return remember('tag',id,`INSERT INTO tag(id,name,owned_by,category_id,value_type,created_by) VALUES($1,$2,$3,$4,'STRING',$3) RETURNING *`,[id,name??'Test Tag '+Date.now(),TEST_USER_ID,categoryId]);}
+export function createTestDataSource(name?:string){const id=generateTestUuid(),d=TEST_DATABASE_CONFIG.CLICKHOUSE;return remember('data_sources',id,`INSERT INTO data_sources(id,name,type,host,port,database_name,username,password,status,owned_by,created_by) VALUES($1,$2,'CLICKHOUSE',$3,$4,$5,$6,$7,'ACTIVE',$8,$8) RETURNING *`,[id,name??'Test DataSource '+Date.now(),d.host,d.port,d.database,d.username,d.password,TEST_USER_ID]);}
+export function createTestDataModel(datasourceId:string,name?:string){const id=generateTestUuid();return remember('data_model',id,'INSERT INTO data_model(id,name,datasource_id,owned_by,created_by) VALUES($1,$2,$3,$4,$4) RETURNING *',[id,name??'Test Model '+Date.now(),datasourceId,TEST_USER_ID]);}
+export function createTestSegment(name?:string){const id=generateTestUuid();return remember('segment',id,`INSERT INTO segment(id,name,status,owned_by,created_by,entity_type,compute_type) VALUES($1,$2,'DRAFT',$3,$3,'STUDENT','MANUAL') RETURNING *`,[id,name??'Test Segment '+Date.now(),TEST_USER_ID]);}
+export async function cleanupTestData(){guard();for(const table of ['tag','tag_category','data_model','data_sources','segment']){const ids=created.get(table);if(ids?.length)await execute(`DELETE FROM ${table} WHERE id=ANY($1::uuid[]) AND owned_by=$2`,[ids,TEST_USER_ID]);}created.clear();}

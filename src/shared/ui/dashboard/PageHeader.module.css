@@ -1,0 +1,54 @@
+.breadcrumbItem {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.headerContainer {
+    width: 100%;
+    min-height: 96px;
+}
+
+.headerContent {
+    display: flex;
+    flex-direction: column;
+}
+
+.titleRow {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.title {
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+.iconContainer {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+}
+
+.description {
+    margin: 0;
+    max-width: 100%;
+}
+
+.actionRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.button {
+    height: 44px;
+    padding-inline: 24px;
+    font-size: 15px;
+    font-weight: 500;
+}

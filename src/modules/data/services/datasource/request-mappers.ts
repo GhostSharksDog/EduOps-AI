@@ -1,0 +1,2 @@
+export type {IDataSourceOHSAdapter} from '@/modules/data/services/datasource/IDataSourceOHSAdapter';
+export {DataSourceOHSAdapterImpl} from '@/modules/data/services/datasource/DataSourceOHSAdapterImpl';

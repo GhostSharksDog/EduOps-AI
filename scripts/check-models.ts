@@ -1,0 +1,18 @@
+// 按应用正常配置机制加载；仅输出配置布尔值、响应维数与校验状态。
+import {config as loadEnv} from 'dotenv';
+loadEnv({path:'.env.local',quiet:true});loadEnv({quiet:true});
+import {CloudModelClient,createEmbeddingClient,modelConfiguration,ModelServiceError} from '../src/platform/ai/client';
+async function main(){
+ const configuration=modelConfiguration(),result:{configuration:typeof configuration;embedding:string;dimensions?:number;chat:string;functionCalling:string;endpointChecks?:unknown;embeddingDiagnostics?:unknown;chatDiagnostics?:unknown}={configuration,embedding:'未执行',chat:'未执行',functionCalling:'未验证'};
+ if(!process.argv.includes('--connect')){console.log(JSON.stringify({configuration,note:'仅检查配置布尔值，不发送网络请求。授权后用--connect发送通用connection-test兼容性校验。'},null,2));return;}
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),90000);
+ try{
+  const endpointCheck=(value:string|undefined)=>{try{const url=new URL(value??''),official=url.hostname==='api.deepseek.com'?'DeepSeek官方':/^dashscope(?:-intl)?\.aliyuncs\.com$/.test(url.hostname)||/\.maas\.aliyuncs\.com$/.test(url.hostname)?'阿里云官方':'其他';return {validUrl:true,provider:official,https:url.protocol==='https:',containsResourcePath:/\/(?:chat\/completions|embeddings)\/?$/.test(url.pathname),hasPlaceholder:/[{}]|自己的|WorkspaceId|工作空间/.test(value??'')};}catch{return {validUrl:false};}};
+  result.endpointChecks={chat:endpointCheck(process.env.CHAT_API_BASE_URL),embedding:endpointCheck(process.env.EMBEDDING_API_BASE_URL)};
+  if(configuration.embeddingConfigured){try{const vectors=await createEmbeddingClient().embed(['connection-test'],{signal:controller.signal});result.embedding='响应校验通过';result.dimensions=vectors[0].length;}catch(e){result.embedding=e instanceof ModelServiceError?e.code:'执行失败';if(e instanceof ModelServiceError)result.embeddingDiagnostics=e.diagnostics;}}
+  if(configuration.chatConfigured){try{const client=new CloudModelClient({baseUrl:process.env.CHAT_API_BASE_URL!,apiKey:process.env.CHAT_API_KEY!,model:process.env.CHAT_MODEL!});const messages=[{role:'system' as const,content:'Generic API compatibility check. Call echo with value connection-test exactly once. After its result, reply with connection-test.'},{role:'user' as const,content:'connection-test'}];const tools=[{type:'function' as const,function:{name:'echo',description:'Generic compatibility check',parameters:{type:'object',properties:{value:{type:'string',enum:['connection-test']}},required:['value'],additionalProperties:false}}}];const response=await client.chat(messages,tools,{signal:controller.signal});result.chat='响应校验通过';const call=response.message.tool_calls?.[0];if(response.message.tool_calls?.length===1&&call?.function.name==='echo'){let args;try{args=JSON.parse(call.function.arguments);}catch{}if(args&&typeof args==='object'&&!Array.isArray(args)&&args.value==='connection-test'&&Object.keys(args).length===1){result.functionCalling='工具名称与参数校验通过';const final=await client.chat([...messages,{role:'assistant',...response.message},{role:'tool',tool_call_id:call.id,content:'connection-test'}],tools,{signal:controller.signal});result.functionCalling=final.message.content?.includes('connection-test')&&!final.message.tool_calls?.length?'工具调用与续轮回答校验通过':'续轮返回未符合约定';}else result.functionCalling='工具参数不符合约定';}else result.functionCalling='未收到唯一工具调用，需确认模型支持';}catch(e){result.chat=e instanceof ModelServiceError?e.code:'执行失败';if(e instanceof ModelServiceError)result.chatDiagnostics=e.diagnostics;}}
+  console.log(JSON.stringify(result,null,2));
+  if(result.embedding!=='响应校验通过'||result.chat!=='响应校验通过'||result.functionCalling!=='工具调用与续轮回答校验通过')process.exitCode=1;
+ }finally{clearTimeout(timer);}
+}
+main().catch(()=>{console.error('模型配置检查失败；未输出配置内容。');process.exitCode=1;});

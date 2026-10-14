@@ -1,0 +1,40 @@
+'use client';
+import {useEffect,useMemo,useRef,useState} from 'react';
+import {Alert,App,Button,Collapse,Empty,Flex,Input,InputNumber,Select,Table,Tag,Typography} from 'antd';
+import dayjs from 'dayjs';
+import {useAuthStore} from '@/modules/identity/client';
+import type {SelectedScope} from '@/modules/analytics/client';
+import {scopeKey} from '@/shared/lib/analysis-navigation';
+import {alertRuleIds,alertRuleLabels,type AlertReplayDTO,type AlertReplayResult,type AlertRuleId} from '../contracts';
+
+type Labels={expected:Record<AlertRuleId,boolean|null>;labelNote:string};
+const emptyLabel=():Labels=>({expected:{attendance_drop:null,low_fill:null,low_renewal:null},labelNote:''});
+const stateLabels={hit:'命中',clear:'未命中',skipped:'数据不足或不适用',disabled:'已停用'};
+const precision=(n:number|null)=>n===null?'待独立标注':(n*100).toFixed(1)+'%';
+const csvValue=(v:unknown)=>'"'+String(v??'').replace(/^[=+\-@]/,"'").replaceAll('"','""')+'"';
+
+export default function ReplayPanel({selection}:{selection:SelectedScope|null}){
+ const token=useAuthStore(s=>s.token),{message}=App.useApp(),[count,setCount]=useState(3),[labels,setLabels]=useState<Record<string,Labels>>({}),[result,setResult]=useState<AlertReplayResult|null>(null),[loading,setLoading]=useState(false),[error,setError]=useState(''),busy=useRef(false);
+ const key=selection?scopeKey(selection):'',periods=useMemo(()=>{if(!selection)return [];const items:AlertReplayDTO['cases']=[];let start=dayjs(selection.scope.startDate),end=dayjs(selection.scope.endDate);for(let i=0;i<count;i++){
+  const startDate=start.format('YYYY-MM-DD'),endDate=end.format('YYYY-MM-DD'),id=startDate+'_'+endDate;items.push({id,name:startDate+' 至 '+endDate,startDate,endDate,labelNote:''});
+  const month=start.date()===1&&end.isSame(start.endOf('month'),'day');if(month){end=start.subtract(1,'day');start=end.startOf('month');}else{const days=end.diff(start,'day')+1;end=start.subtract(1,'day');start=start.subtract(days,'day');}
+ }return items;},[key,count]);
+ useEffect(()=>{setLabels({});setResult(null);setError('');},[key]);
+ async function replay(){if(!selection||busy.current)return;busy.current=true;setLoading(true);setError('');try{
+  const cases=periods.map(p=>({...p,...(labels[p.id]??emptyLabel())}));const response=await fetch('/api/alerts/replay',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({...selection,cases})}),body=await response.json();if(!response.ok)throw Error(body.message??'回放失败');setResult(body.data);message.success('已完成只读回放，没有创建预警或改变处理状态。');
+ }catch(e){setError((e as Error).message);}finally{busy.current=false;setLoading(false);}}
+ function update(id:string,part:Partial<Labels>){setLabels(old=>({...old,[id]:{...(old[id]??emptyLabel()),...part}}));}
+ function exportResult(){if(!result)return;const rows:unknown[][]=[['记录性质','数据集','配置版本','生成时间','场景','开始日','结束日','规则','人工期望','标注依据','实际结果','结果说明','阈值','最小样本','计算毫秒','数据指纹','来源批次'],...result.cases.flatMap(c=>c.outcomes.map(o=>[result.recordType,result.datasetName,result.configuration.version,result.generatedAt,c.name,c.scope.startDate,c.scope.endDate,alertRuleLabels[o.rule],c.expected[o.rule]===true?'异常':c.expected[o.rule]===false?'正常':'未标注',c.labelNote,stateLabels[o.state],o.reason,result.configuration.rules[o.rule].threshold,result.configuration.rules[o.rule].minimumSample,c.computeDurationMs,c.sourceFingerprint,c.batches.map(b=>b.id).join('|')]))];rows.push([],['汇总','真正例','误报','漏报','真负例','未标注','不可评价','精确率','召回率']);for(const r of [...alertRuleIds,'all'] as const){const s=r==='all'?result.summary:result.byRule[r];rows.push([r==='all'?'整体':alertRuleLabels[r],s.truePositive,s.falsePositive,s.falseNegative,s.trueNegative,s.unlabelled,s.unavailable,s.precision??'',s.recall??'']);}rows.push([],['总耗时毫秒',result.computeDurationMs],['数据加载毫秒',result.dataLoadDurationMs],['人工触发等待毫秒','未测定'],['耗时说明',result.timingNote]);const url=URL.createObjectURL(new Blob(['\uFEFF'+rows.map(row=>row.map(csvValue).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='预警历史回放_'+result.generatedAt.slice(0,10)+'.csv';a.click();URL.revokeObjectURL(url);}
+ const changed=result&&periods.some(p=>{const l=labels[p.id]??emptyLabel(),old=result.cases.find(c=>c.id===p.id);return !old||JSON.stringify(l.expected)!==JSON.stringify(old.expected)||l.labelNote!==old.labelNote;});
+ return <Flex vertical gap={14}>
+  <Alert showIcon type="info" title="回放查询不保存正式预警" description="按当前范围回放历史周期。人工期望必须由独立场景说明或核对记录确定，不能把规则自己的结果当作标准答案；未标注及数据不足单列。"/>
+  <Flex gap={8} wrap align="center"><Typography.Text>回放周期数</Typography.Text><InputNumber aria-label="预警回放周期数" value={count} min={1} max={12} precision={0} disabled={loading} onChange={v=>{if(v)setCount(v);}}/><Button type="primary" disabled={!selection} loading={loading} onClick={()=>void replay()}>只读回放</Button><Button disabled={!result||loading} onClick={exportResult}>导出冻结实验记录</Button></Flex>
+  <Typography.Text type="secondary">自然月回放上一自然月，其他范围回放前一段相同天数；不会自动生成预警或执行处理。</Typography.Text>
+  {!!periods.length&&<Table rowKey="id" size="small" scroll={{x:1000}} pagination={false} dataSource={periods} columns={[{title:'独立场景',dataIndex:'name'},...alertRuleIds.map(rule=>({title:alertRuleLabels[rule],render:(_unknown:unknown,p:AlertReplayDTO['cases'][number])=><Select aria-label={p.name+' '+alertRuleLabels[rule]+'人工标注'} disabled={loading} style={{width:120}} value={labels[p.id]?.expected[rule]===true?'yes':labels[p.id]?.expected[rule]===false?'no':'unknown'} options={[{value:'unknown',label:'尚未标注'},{value:'yes',label:'期望异常'},{value:'no',label:'期望正常'}]} onChange={v=>update(p.id,{expected:{...(labels[p.id]??emptyLabel()).expected,[rule]:v==='unknown'?null:v==='yes'}})}/>})),{title:'独立标注依据',render:(_,p)=><Input aria-label={p.name+'标注依据'} disabled={loading} maxLength={1000} value={labels[p.id]?.labelNote??''} onChange={e=>update(p.id,{labelNote:e.target.value})} placeholder="场景配置或人工核对说明" style={{minWidth:220}}/>}]}/>}
+  {error&&<Alert showIcon type="error" title={error}/>} {!selection&&<Empty description="请先选择经营范围"/>}
+  {result&&<><Flex gap={8} wrap><Tag color="orange">模拟实验 · 不计真人采用率</Tag><Tag color="blue">规则v{result.configuration.version}</Tag><Typography.Text>{result.cases.length}个周期 · 总耗时 {result.computeDurationMs.toFixed(2)} ms</Typography.Text></Flex>{changed&&<Alert type="warning" title="输入已修改，当前结果与导出仍是上次冻结版本；请重新回放。"/>}<div className="profile-stats">{[['误报',result.summary.falsePositive],['漏报',result.summary.falseNegative],['精确率',precision(result.summary.precision)],['召回率',precision(result.summary.recall)]].map(([label,value])=><div className="profile-stat" key={label}><small>{label}</small><strong>{value}</strong></div>)}</div><Typography.Paragraph type="secondary">未独立标注 {result.summary.unlabelled} 项；停用、缺数据或不适用 {result.summary.unavailable} 项，均不计为真负例。{result.timingNote}</Typography.Paragraph>
+   <Table rowKey="key" size="small" scroll={{x:900}} dataSource={result.cases.flatMap(c=>c.outcomes.map(o=>({...o,key:c.id+o.rule,case:c})))} columns={[{title:'周期',render:(_,r)=>r.case.name},{title:'规则',dataIndex:'rule',render:(v:AlertRuleId)=>alertRuleLabels[v]},{title:'人工期望',render:(_,r)=>r.case.expected[r.rule]===true?'异常':r.case.expected[r.rule]===false?'正常':'未标注'},{title:'实际结果',render:(_,r)=><Tag color={r.state==='hit'?'orange':r.state==='clear'?'green':'default'}>{stateLabels[r.state]}</Tag>},{title:'命中／跳过依据',dataIndex:'reason'},{title:'计算ms',render:(_,r)=>r.case.computeDurationMs.toFixed(2)}]}/>
+   <Collapse items={result.cases.map(c=>({key:c.id,label:c.name+' · 数据与批次依据',children:<Flex vertical gap={8}><Typography.Text style={{overflowWrap:'anywhere'}}>指纹 {c.sourceFingerprint}</Typography.Text><Typography.Text type="secondary">{c.batches.map(b=>b.kind+' '+b.rows+'条').join('；')}</Typography.Text><Table rowKey="code" size="small" pagination={false} scroll={{x:600}} dataSource={c.metrics} columns={[{title:'指标',dataIndex:'code'},{title:'值',dataIndex:'value',render:v=>v===null?'数据不足':v},{title:'分子',dataIndex:'numerator'},{title:'分母',dataIndex:'denominator'},{title:'说明',dataIndex:'reason'}]}/></Flex>}))}/>
+  </>}
+ </Flex>;
+}
