@@ -1,10 +1,11 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {authMiddleware, getCurrentUser} from '@/modules/identity/server';
 import {handleAPIError} from '@/platform/api-error-handler';
 import {withAudit} from '@/modules/system/server';
 import {getTargetTableApplicationService, getTargetTableOHSAdapter} from '@/modules/tag/server';
 
-export async function GET(
+async function GETHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -29,7 +30,7 @@ export async function GET(
   }
 }
 
-export async function PUT(
+async function PUTHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -49,7 +50,7 @@ export async function PUT(
   }
 }
 
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -68,3 +69,7 @@ export async function DELETE(
     return handleAPIError(error);
   }
 }
+
+export const GET=withCompanyRoute(GETHandler);
+export const PUT=withCompanyRoute(PUTHandler);
+export const DELETE=withCompanyRoute(DELETEHandler);

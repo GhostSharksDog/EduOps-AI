@@ -1,3 +1,5 @@
+import {useCompanyUnitFixture} from '@/tests/helpers/company-unit-fixture';
+const companyId=useCompanyUnitFixture();
 import { describe, it, expect, vi, beforeEach, Mock } from 'vitest';
 import { TagCategoryApplicationServiceImpl } from '@/modules/tag/services/TagCategoryApplicationServiceImpl';
 import type {
@@ -84,7 +86,7 @@ describe('TagCategoryApplicationServiceImpl', () => {
         description: 'Test description',
         orderIndex: 0,
         createdBy: 'user-123',
-        ownedBy: 'tenant-001'
+        ownedBy: companyId
       };
 
       const mockCategory = createMockCategory();
@@ -112,7 +114,7 @@ describe('TagCategoryApplicationServiceImpl', () => {
         description: 'Child category',
         orderIndex: 0,
         createdBy: 'user-123',
-        ownedBy: 'tenant-001'
+        ownedBy: companyId
       };
 
       const mockCategory = createMockCategory({ parentId: parentId });
@@ -168,7 +170,7 @@ describe('TagCategoryApplicationServiceImpl', () => {
         name: 'Updated Category',
         description: 'Updated description',
         updatedBy: 'user-123',
-        ownedBy: 'tenant-001'
+        ownedBy: companyId
       };
 
       const mockCategory = createMockCategory({ name: 'Updated Category' });
@@ -179,7 +181,7 @@ describe('TagCategoryApplicationServiceImpl', () => {
 
       const result = await service.updateCategory(command);
 
-      expect(mockTagCategoryDomainService.updateCategory).toHaveBeenCalledWith('cat-123', command, { tenantId: 'tenant-001' });
+      expect(mockTagCategoryDomainService.updateCategory).toHaveBeenCalledWith('cat-123', command, { tenantId: companyId });
       expect(result.name).toBe('Updated Category');
     });
   });
@@ -189,7 +191,7 @@ describe('TagCategoryApplicationServiceImpl', () => {
       const command: DeleteTagCategoryCommand = {
         categoryId: 'cat-123',
         deletedBy: 'user-123',
-        ownedBy: 'tenant-001'
+        ownedBy: companyId
       };
 
       mockTagCategoryDomainService.canDeleteCategory.mockResolvedValue(true);
@@ -197,15 +199,15 @@ describe('TagCategoryApplicationServiceImpl', () => {
 
       await service.deleteCategory(command);
 
-      expect(mockTagCategoryDomainService.canDeleteCategory).toHaveBeenCalledWith('cat-123', { tenantId: 'tenant-001' });
-      expect(mockTagCategoryDomainService.deleteCategory).toHaveBeenCalledWith(command, { tenantId: 'tenant-001' });
+      expect(mockTagCategoryDomainService.canDeleteCategory).toHaveBeenCalledWith('cat-123', { tenantId: companyId });
+      expect(mockTagCategoryDomainService.deleteCategory).toHaveBeenCalledWith(command, { tenantId: companyId });
     });
 
     it('should throw error when category cannot be deleted', async () => {
       const command: DeleteTagCategoryCommand = {
         categoryId: 'cat-123',
         deletedBy: 'user-123',
-        ownedBy: 'tenant-001'
+        ownedBy: companyId
       };
 
       mockTagCategoryDomainService.canDeleteCategory.mockResolvedValue(false);
@@ -289,7 +291,7 @@ describe('TagCategoryApplicationServiceImpl', () => {
         categoryId: 'cat-123',
         newParentId: newParentId,
         updatedBy: 'user-123',
-        ownedBy: 'tenant-001'
+        ownedBy: companyId
       };
 
       const mockCategory = createMockCategory({ parentId: newParentId });
@@ -312,7 +314,7 @@ describe('TagCategoryApplicationServiceImpl', () => {
 
       const result = await service.moveCategory(command);
 
-      expect(mockTagCategoryDomainService.moveCategory).toHaveBeenCalledWith('cat-123', newParentId, { tenantId: 'tenant-001' });
+      expect(mockTagCategoryDomainService.moveCategory).toHaveBeenCalledWith('cat-123', newParentId, { tenantId: companyId });
       // Check that parent.id matches
       expect(result.parent).toHaveProperty('id', newParentId);
     });
@@ -322,7 +324,7 @@ describe('TagCategoryApplicationServiceImpl', () => {
         categoryId: 'cat-123',
         newParentId: '',
         updatedBy: 'user-123',
-        ownedBy: 'tenant-001'
+        ownedBy: companyId
       };
 
       const mockCategory = createMockCategory({ parentId: undefined });
@@ -333,7 +335,7 @@ describe('TagCategoryApplicationServiceImpl', () => {
 
       const result = await service.moveCategory(command);
 
-      expect(mockTagCategoryDomainService.moveCategory).toHaveBeenCalledWith('cat-123', '', { tenantId: 'tenant-001' });
+      expect(mockTagCategoryDomainService.moveCategory).toHaveBeenCalledWith('cat-123', '', { tenantId: companyId });
       expect(result.parent).toBeNull();
     });
   });
@@ -344,7 +346,7 @@ describe('TagCategoryApplicationServiceImpl', () => {
         categoryIds: ['cat-1', 'cat-2', 'cat-3'],
         orderIndex: [0, 1, 2],
         updatedBy: 'user-123',
-        ownedBy: 'tenant-001'
+        ownedBy: companyId
       };
 
       mockTagCategoryDomainService.reorderCategories.mockResolvedValue(undefined);

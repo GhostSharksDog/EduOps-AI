@@ -36,7 +36,7 @@ describe('账号、设置、审计与回收站',()=>{
  it('登出与设置操作真实写入本机构审计',async()=>{
   await f.json('/api/auth/logout','POST',{});
   const logs=await f.json('/api/audit-logs?page=1&pageSize=100');expect(logs.items.some((l:{actorId:string})=>l.actorId===f.users.admin.id)).toBe(true);
-  const others=await f.json('/api/audit-logs','GET',undefined,200,'outsider');expect(others.items.some((l:{actorId:string})=>l.actorId===f.users.admin.id)).toBe(false);
+  const others=await f.json('/api/audit-logs','GET',undefined,401,'outsider');expect(others.error).toBeTruthy();
  });
  it('回收站恢复和永久删除真实改变记录',async()=>{
   const category=await f.json('/api/tag-categories','POST',{name:'API回收恢复'},201);

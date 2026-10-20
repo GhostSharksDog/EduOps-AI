@@ -4,10 +4,11 @@ import {db,queryOne,execute,transaction} from '@/platform/database';
 import {RecycleBinApplicationServiceImpl} from '@/modules/system/services/recycle-bin/RecycleBinApplicationServiceImpl';
 import {DatabaseSegmentRepository} from '@/modules/segment/repositories/DatabaseSegmentRepository';
 import {RecycleBinItemType as Type} from '@/shared/enums';
-const org=randomUUID(),other=randomUUID(),actor=randomUUID(),service=new RecycleBinApplicationServiceImpl(),segments=new DatabaseSegmentRepository();
+import {getDefaultCompany} from '@/platform/company/registry';
+const org=getDefaultCompany().organizationId,other=randomUUID(),actor=randomUUID(),service=new RecycleBinApplicationServiceImpl(),segments=new DatabaseSegmentRepository();
 function guard(){const url=new URL(process.env.DATABASE_URL??'');if(url.hostname!=='127.0.0.1'||url.port!=='25432'||url.pathname!=='/education_cleanup_test')throw Error('仅限本轮专用_test数据库');}
 beforeAll(async()=>{guard();expect((await queryOne('SELECT current_database() AS name'))?.name).toBe('education_cleanup_test');});
-afterAll(async()=>{guard();for(const table of ['segment_condition','segment_calculation_task','segment_member','segment','model_column','data_model','data_sources','target_table'])await execute(`DELETE FROM ${table} WHERE owned_by=ANY($1::uuid[])`,[[org,other]]);await db.end();});
+afterAll(async()=>{guard();for(const table of ['segment_condition','segment_calculation_task','segment_member','segment','model_column','data_model','data_sources','target_table'])await execute(`DELETE FROM ${table} WHERE created_by=$1`,[actor]);await db.end();});
 async function seedSegment(ownedBy=org){const id=randomUUID();await execute(`INSERT INTO segment(id,name,owned_by,entity_type,compute_type,status,created_by) VALUES($1,'回收站测试',$2,'STUDENT','MANUAL','DRAFT',$3)`,[id,ownedBy,actor]);return id;}
 async function seedSource(ownedBy=org){const id=randomUUID();await execute(`INSERT INTO data_sources(id,name,type,host,port,database_name,username,password,owned_by,created_by) VALUES($1,'回收站测试','POSTGRESQL','localhost',25432,'fixture_test','fixture','fixture',$2,$3)`,[id,ownedBy,actor]);return id;}
 describe('回收站真实事务与恢复语义',()=>{
@@ -42,7 +43,7 @@ describe('回收站真实事务与恢复语义',()=>{
   expect((await queryOne('SELECT id FROM model_column WHERE id=$1',[column]))?.id).toBe(column);
  });
  it('目标表按实际名称过滤且分页空页保留真实总数',async()=>{
-  const id=randomUUID();await execute(`INSERT INTO target_table(id,table_name,entity_type,entity_type_id,owned_by,create_table_sql,table_type,is_deleted,delete_time) VALUES($1,$2,'STUDENT',$3,$4,'{}'::jsonb,'PHYSICAL_TABLE',true,NOW())`,[id,'recycle_fixture_'+id.replaceAll('-',''),randomUUID(),org]);
+  const id=randomUUID();await execute(`INSERT INTO target_table(id,table_name,entity_type,entity_type_id,owned_by,create_table_sql,table_type,is_deleted,delete_time,created_by) VALUES($1,$2,'STUDENT',$3,$4,'{}'::jsonb,'PHYSICAL_TABLE',true,NOW(),$5)`,[id,'recycle_fixture_'+id.replaceAll('-',''),randomUUID(),org,actor]);
   const result=await service.listRecycleBinItems({type:Type.TARGET_TABLE,keyword:'recycle_fixture',page:100,pageSize:10,tenantFilter:{tenantId:org}});expect(result.items).toEqual([]);expect(result.totalCount).toBe(1);
  });
 });

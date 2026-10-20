@@ -31,6 +31,6 @@ describe('数据源与数据模型实际CRUD',()=>{
  it('其他机构不能读取本机构数据源',async()=>{
   const ds=await f.json('/api/data-sources','POST',source('API机构隔离'),201);
   await f.json('/api/data-sources/'+ds.id,'GET',undefined,404,'outsider');
-  const list=await f.json('/api/data-sources','GET',undefined,200,'outsider');expect(list.items.some((v:{id:string})=>v.id===ds.id)).toBe(false);
+  const list=await f.json('/api/data-sources','GET',undefined,401,'outsider');expect(list.error).toBeTruthy();
  });
 });

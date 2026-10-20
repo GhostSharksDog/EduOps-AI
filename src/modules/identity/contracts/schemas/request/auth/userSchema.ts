@@ -11,6 +11,8 @@ export const userSchema = z.strictObject({
     realName: z.string().trim().min(1, '用户姓名不能为空').describe('用户姓名'),
     email: z.email('邮箱格式不正确').optional().describe('用户邮箱'),
     ownedBy: z.string().optional().describe('租户ID'),
+    companyCode:z.string().optional(),
+    companyName:z.string().optional(),
 });
 
 /**

@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import { NextRequest, NextResponse } from 'next/server';
 import {getTagRefreshMonitorService} from '@/modules/tag/server';
 import { log } from '@/platform/logger';
@@ -9,7 +10,7 @@ import { handleAPIError } from '@/platform/api-error-handler';
  *
  * 获取所有标签的刷新状态
  */
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   // Security: Require authentication for admin endpoints
   const authError = await authMiddleware(request);
   if (authError) return authError;
@@ -30,3 +31,5 @@ export async function GET(request: NextRequest) {
     return handleAPIError(error);
   }
 }
+
+export const GET=withCompanyRoute(GETHandler);

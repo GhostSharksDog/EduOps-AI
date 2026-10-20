@@ -20,6 +20,9 @@ async function main(){
  // 在导入数据库客户端或应用配置之前固定隔离库，覆盖本地真实数据库设置。
  process.env.DATABASE_URL=TEST_DATABASE_URL;
  guardDatabase();
+ Object.assign(process.env,{COMPANY_REGISTRY_JSON:'',DEFAULT_COMPANY_CODE:'main',CLICKHOUSE_HOST:'127.0.0.1',CLICKHOUSE_PORT:'28123',CLICKHOUSE_USER:'default',CLICKHOUSE_PASSWORD:'test_password',CLICKHOUSE_DATABASE:'education_cleanup_test',SYSTEM_USER_ID:'6f40f555-5f1b-4d1f-807c-b209e817bfdd'});
+ const {runStandaloneTestCompany}=await import('../helpers/standalone-company');
+ return runStandaloneTestCompany(async()=>{
  const organizationId=randomUUID(),otherOrganizationId=randomUUID(),actorId=randomUUID();
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),180000);
  const result={status:'failed',stage:'configuration',dimensions:0,createdVersions:0,indexedVersions:0,retrievalHits:0,currentVersion:0,otherOrganizationHits:0,historyReadable:false,cleanupComplete:false};
@@ -106,5 +109,6 @@ async function main(){
   }
   console.log(JSON.stringify(result,null,2));
  }
+ });
 }
 main().catch(()=>{console.error(JSON.stringify({status:'failed',stage:'initialization'}));process.exitCode=1;});

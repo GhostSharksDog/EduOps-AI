@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import {authMiddleware} from '@/modules/identity/server';
@@ -23,7 +24,7 @@ const DDLPreviewRequestSchema = z.object({
   aggregateFunctionName: z.string().optional().describe('聚合函数名'),
 });
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   const authError = await authMiddleware(request);
   if (authError) return authError;
 
@@ -49,3 +50,5 @@ export async function POST(request: NextRequest) {
     return handleAPIError(error);
   }
 }
+
+export const POST=withCompanyRoute(POSTHandler);

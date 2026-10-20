@@ -1,5 +1,6 @@
 import 'server-only';
-import {config} from '@/platform/config';
+import {requireCompanyContext} from '@/platform/company/context';
+import {companyClickHouse} from '@/platform/company/registry';
 export const clickHouseArray=(values:string[])=>'['+values.map(v=>"'"+v.replaceAll('\\','\\\\').replaceAll("'","\\'")+"'").join(',')+']';
 const formFieldLimit=32*1024;
 // Poco HTMLForm限制单字段大小；拆成类型相同的绑定参数并在数据库内拼接。
@@ -37,9 +38,9 @@ export function bindEducationHttpParameters(query:string,parameters:Record<strin
 
 // 独立教育事件表。只接收参数化查询，不接受浏览器或模型提供的SQL。
 export class EducationEventsClient {
-    private ready:Promise<void>|null=null;
+    private readonly ready=new Map<string,Promise<void>>();
     async execute(query:string,parameters:Record<string,string>={},body?:string,options:{timeoutMs?:number;signal?:AbortSignal}={}):Promise<string>{
-        const c=config.clickhouse;
+        const c=companyClickHouse(requireCompanyContext().company);
         const url=new URL(/^https?:\/\//.test(c.host)?c.host:`http://${c.host}:${c.port}`);
         url.searchParams.set('database',c.database);
         // 参数放入请求正文，避免数千来源编号/批次使URL超过HTTP限制。
@@ -66,12 +67,13 @@ export class EducationEventsClient {
         return response.text();
     }
     async ensureTable(){
-        if(!this.ready)this.ready=this.execute(`CREATE TABLE IF NOT EXISTS education_events_v1 (
+        const company=requireCompanyContext().company,c=companyClickHouse(company),key=company.code+':'+c.host+':'+c.port+':'+c.database;
+        if(!this.ready.has(key))this.ready.set(key,this.execute(`CREATE TABLE IF NOT EXISTS education_events_v1 (
             organization_id UUID, dataset_id UUID, batch_id UUID, kind LowCardinality(String), source_id String,
             hash String, payload String, student_id String, campus_id String, course_id String, class_id String,
             occurred_at Nullable(DateTime64(3,'UTC')), relative_day Nullable(Int32), version UInt64
-        ) ENGINE=ReplacingMergeTree(version) ORDER BY (organization_id,dataset_id,kind,source_id,batch_id)`).then(()=>{}).catch(error=>{this.ready=null;throw error;});
-        return this.ready;
+        ) ENGINE=ReplacingMergeTree(version) ORDER BY (organization_id,dataset_id,kind,source_id,batch_id)`).then(()=>{}).catch(error=>{this.ready.delete(key);throw error;}));
+        return this.ready.get(key)!;
     }
     async read(parameters:Record<string,string>,extra:string=''){
         await this.ensureTable();

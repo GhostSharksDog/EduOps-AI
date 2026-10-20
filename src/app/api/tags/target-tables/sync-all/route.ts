@@ -1,9 +1,10 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {authMiddleware} from '@/modules/identity/server';
 import {handleAPIError} from '@/platform/api-error-handler';
 import {getTargetTableApplicationService} from '@/modules/tag/server';
 
-export async function POST(
+async function POSTHandler(
   request: NextRequest
 ) {
   const authError = await authMiddleware(request);
@@ -17,3 +18,5 @@ export async function POST(
     return handleAPIError(error);
   }
 }
+
+export const POST=withCompanyRoute(POSTHandler);

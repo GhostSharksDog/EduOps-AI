@@ -7,7 +7,7 @@ import type {DiagnosticCheck,RuntimeDiagnostics} from '../contracts/diagnostics'
 import type {QueryConfig} from 'pg';
 
 export const diagnosticTables=['local_user','education_dataset','education_import_batch','education_record','education_risk_proposal','education_segment_snapshot','knowledge_source_version','knowledge_chunk','agent_session','agent_message','agent_execution','operational_alert','operational_report','decision_task','decision_feedback','analysis_evaluation','system_config','tag','tag_version','tag_category'] as const;
-export const diagnosticColumns=['decision_task.goals','decision_feedback.quantitativeReview'] as const;
+export const diagnosticColumns=['decision_task.goals','decision_feedback.quantitativeReview','agent_session.taskState'] as const;
 const eventColumns=['organization_id','dataset_id','batch_id','kind','source_id','payload','student_id','campus_id','course_id','class_id','occurred_at','relative_day','version'];
 type PostgresStatus={tables:string[];columns:string[];vector:boolean};
 type ModelStatus='configured'|'missing'|'invalid';

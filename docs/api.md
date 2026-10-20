@@ -1,16 +1,94 @@
 # 接口约定
 
+## 空间感界面兼容（2026-10-19）
+
+本轮仅改前端构图、公共主题、图片与动效；业务API和契约不变，图片优化为本地next/image资源请求。进场不通过重挂载业务页实现，不额外触发查询、模型或正式写操作。Agent的真实进度、12px输入区、原确认入口及权限沿用。
+
+## Agent输入区兼容（2026-10-19）
+
+本轮仅调整输入及对话区域布局，接口、请求参数与返回契约不变。发送、轮询、防重复及正式操作确认沿用现有服务，页面截图和输入测试使用受控API，不向正常库或云模型提交问题。
+
+## 分析完整性与facts_only兼容（2026-10-19）
+
+AgentAnswerVO增加可选partial:{kind:'facts_only',reasonCode:string,missingTools?:string[]}，存既有answer JSONB；运行status和返回status不变，部分结果仍failed/error，不伪装completed。原历史没有该标记继续按原状态展示。INCOMPLETE_ANALYSIS表示明确要求的维度查询缺失，原恢复入口拒绝仅解读，需重新查询。query_metric_breakdown内部工具增加可选metricCodes，不改变HTTP接口；模型只见fact映射，页面仍取得完整程序事实、样本、图表及来源。
+
+## 解读数字校验兼容（2026-10-19）
+
+接口地址、输入、运行状态及原事实编号不变。fN和labelN仅为内部生成阶段的本轮绑定，客户端仍取得实际facts、evidence和程序图表，不接收未解析的短编号。没有证据的比例、人数、金额和规则参数继续返回UNVERIFIED_NUMBER；已核验日历用语与建议次数单独处理。内部answerValidation仅保存失败码及字段路径，沿用runtime公开响应脱敏，不暴露模型原文或连接信息。旧失败记录保留，满足冻结条件的记录可通过既有retry-interpretation接口重新解读。
+
+## Agent辅助操作与图表（2026-10-19）
+
+- 不新增业务接口。AgentStepVO增加可选visualizations，旧记录无此字段继续兼容；每图包含kind、分类、系列数值／状态、单位、指标code、数据来源与公共范围、evidenceIds。模型不能提交ECharts配置，图表只由受控服务返回，HTTP不额外暴露模型输入。
+- 最多8图、30类、3系列，非有效数值不绘制，旧无图记录不读取当前数据补图。恢复解读只复制原冻结范围且引用完整的图表至restore_frozen_facts。
+- 下一步与澄清仍提交POST /api/agent/runs并使用原请求幂等键。单项普通澄清可直接发问，正式操作没有新增快捷执行API。历史范围继续由明确按钮选择，权限和可用数据仍服务端检查。
+- GET /api/settings改为纯读取：原响应格式不变，缺记录返回默认配置，不INSERT或UPDATE。PUT继续局部保存、按身份机构过滤并记录SystemConfig审计；客户端身份头不参与机构选择。
+
+## Agent第三版体验接口（2026-10-18）
+
+- GET /api/agent/sessions/:id的session增加可选taskState；旧空值返回空任务状态，历史回答不改写。当前目标、条件与对象只来自用户明确输入和服务端核验结果。
+- PATCH /api/agent/sessions/:id/task-state：`{action:"update",expectedRevision,goal?,userConditions?}`或`{action:"clear",expectedRevision}`。目标最多500字符；条件最多8项，每项200字符。返回CapabilityResult<AgentTaskState>。公司来自身份，会话需本人可继续或管理员；只读账号可管理自己的问答记忆，不能准备业务草稿。并发版本或运行冲突返回409及可恢复错误码。
+- POST /api/agent/runs/:id/retry-interpretation：严格接收`{requestKey:UUID}`。服务端加载源事实、证据及冻结范围，新建关联运行；同键复用，换来源拒绝。缺少依据、数据批次／业务状态变化、知识不可核查或会话不可继续时明确拒绝，不偷偷重新查询或重放工具。
+- 运行增加recoveryOf与可选recoveryEligibility；失败显示是否能仅重试解读及具体原因。新解读沿用现有进度入口和运行契约，不修改下一轮来源与范围。进度查询继续只读。
+- 工具网关内部select_task_tools接收唯一任务组集合及可选简短原因，最多两次。它不执行正式操作；未知组、模式越界、未提供工具或只读写工具均拒绝。内部切组也计入原8次工具预算。
+- 研究比较支持v3及executionKind，单独计toolSelectionCalls；解读恢复不能用于证明完整业务任务成功。模型输入仍只在服务端审计记录中读取，公开响应剥离完整输入。
+
+## 个人工作台只读接口（2026-10-18）
+
+GET /api/workbench接收type=all|task|plan|material（默认all）、page（默认1，1—1000），每页固定10条。只允许这两个参数，重复参数或客户端提供用户、公司、数据集、scope均返回400；身份来自withCompanyRoute与认证账号，GET对本地三种有效角色开放。
+
+响应外层为{status:'ready',data:WorkbenchResult}，Cache-Control:no-store。data包含generatedAt、counts（all/task/plan/material，读取失败为null）、todos（items/page/pageSize/total/status/message）、recent（最多6项及status/message）、sources分区读取状态。分区状态ready／partial／error与HTTP身份／参数错误独立，不把局部读取失败显示成空待办。
+
+事项仅返回id、kind、title、status/statusLabel、updatedAt、href、actionLabel/canAct及必要的期限、版本、来源、周期说明；不返回原始分析正文、完整快照、内部模型参数或知识正文。href由服务端使用对象自身范围构造，经营／学习／年度财务参数互斥。首页按钮只导航，正式操作仍在既有页面确认。
+
+原17个目录入口和业务详情地址兼容；工作台页面视图参数view/q/type/page/mobilePane为前端状态，不参与业务计算或改变账号授权范围。无新增写入接口。
+
+## 分区工作台兼容说明（2026-10-17）
+
+不新增或变更后端接口。总览一次查询结果仍用于指标、图表和事项；图表切换及指标选择只改变前端视图，口径弹窗独立打开。对话历史与右侧结果共享已有会话和执行记录，选中执行的context为结果依据，下一轮编辑范围不能覆盖历史记录。
+
+原proposalId、snapshotId、runId、taskId、sourceId及报告详情URL继续有效；页面目录选择将对象编号同步地址，返回及刷新恢复。资料、成员和详情继续使用现有读取与分页接口；过时请求取消不等同于重试写操作。新增公共布局组件与可选AbortSignal仅为前端接口，服务端契约、确认参数及角色校验保持。
+
+## 视觉升级兼容说明（2026-10-15）
+
+本轮仅重排前端，没有新增或修改业务接口、存储、鉴权与模型参数。总览、分析、标签、人群、预警、报告和任务继续使用原契约；收起的内容仍来自完整返回数据。切换数据集、应用范围、查看事实和确认操作沿用原请求边界，页面加载不新增模型调用或自动写入。旧URL、查询参数、冻结范围、确认版本和恢复入口继续有效。
+
+## 连续交流、公司身份与操作计划（2026-10-14）
+
+- GET /api/auth/companies：公开返回公司code/name及defaultCompanyCode，不返回机构编号、数据库地址或环境变量引用。
+- POST /api/auth/login：原username/password兼容，增加可选companyCode；缺省仅选明确的默认公司。不同公司可使用同名账号。token及user包含公司信息，后续身份以服务端重新加载的账号为准。
+- 全部受保护API运行在已验证公司上下文。旧/api/public/tags和/api/public/tags/values保留地址，要求登录；x-tenant-id不能作为鉴权凭证。
+- POST /api/agent/runs：原message/requestKey/sessionId兼容；已有会话可提交datasetId和互斥scope/learningScope/financeScope调整本轮范围。切换数据集必须带范围并由页面明确选择，模型只能在当前数据集内调整条件。
+- 回答保留summary/facts/hypotheses/recommendations/limitations，增加可选kind和questions。kind为conversation/clarification/analysis/action，旧记录按analysis阅读。运行增加context和actionPlan，均从已有steps JSONB恢复。
+- 数据集目录与范围选项、指标、拆解、标签、人群、知识、预警、报告和任务查询是读取工具；草稿编辑、预览和操作计划准备是propose工具。只读用户可创建自己的问答会话，不能使用propose工具或确认接口。
+- POST /api/agent/actions/confirm：{runId,planId,version,requestKey}，页面明确确认后执行。PATCH /api/agent/actions：{runId,planId,version,...可编辑内容}，保存后递增版本，旧确认拒绝。
+- 通用确认/编辑返回CapabilityResult<AgentRunVO>，步骤结果包含业务对象编号及跳转地址；部分失败与失效有独立状态。重复提交复用实际完成对象。
+- POST /api/agent/proposals/confirm仍兼容原标签确认参数，接入相同正式操作校验，不隐式执行额外人群或任务。
+- 进度接口继续只读，每2秒串行轮询；不借进度查询修改执行状态或重试写入。确认工具不出现在模型工具列表。
+- 模型暂时性502／503／504在单次运行原预算内最多恢复一次。HTTP返回的context步骤runtime.recovery仅包含status、httpStatus、round、retryAt；内部重发引用和模型输入仍不返回前端。失败时run.answer可保留已取得事实，不等同于智能解读成功。
+- GET /api/agent/research/runs：返回本公司最近执行的安全候选目录；POST /api/agent/research/compare：{oldRunId,newRunId}，只读比较问题、冻结范围、工具、引用和实际操作记录。只读账号可查询，不自动填写人工评价。
+- 新执行在原steps JSONB记录引擎、提示版本、模型名称及实际模型请求的增量审计。执行、会话、进度与确认接口剥离原始messages/tools，仅返回版本及输入摘要；研究服务在服务器读取内部轨迹，缺失的历史信息不按当前配置补写。
+- PATCH /api/decisions/:id增加可选arrangement，修改待执行或暂缓任务的动作、负责人、期限、优先级和复核方法；仍校验expectedVersion、公司、角色及责任人状态，不改来源、人群、目标或执行状态。不能与状态改变、量化复核同时提交。
+
+模型输出的{{fact:完整id}}由服务端使用本轮工具事实填入数字、单位或已核验文本displayValue；无效引用与未经核验的经营数字拒绝。任务期限、报告周期及状态也从真实记录绑定，不由模型猜测。scope与rule引用分别绑定实际统计范围和规则参数，RAG原文不能覆盖这些事实或权限。操作列表序号、确实存在的建议序号及澄清中的候选周期不视为已计算经营数字。
+
+query_metrics工具同时返回当前指标、分子分母、对比期、程序计算的变化及两期证据；未知变化仍为空。query_decision_tasks、query_reports、query_alerts支持可选taskId、reportId、alertId精确读取，继续严格匹配数据集和冻结范围；返回目录到达服务上限时明确标为部分记录。
+
+操作准备时固定实际负责人。相同来源已有任务且安排一致时明确复用；安排冲突在发布标签前拒绝，提供已有任务入口。人群复用显示实际名称。失败报告保留原记录，须准备新的报告计划，原失败计划不能循环恢复或冒充成功。
+
+以下历史章节保留旧接口背景；公司身份、viewer问答及会话范围调整以本节为准。
+
+
 ## 页面精简兼容约定（2026-10-14）
 
 本轮复用现有HTTP契约，不新增业务表。菜单变化不改变URL。摘要折叠、只显示前三项事实与建议只发生在阅读层，原响应、完整详情及导出保留。
 
 经营范围仍通过AnalysisScope传递；抽屉编辑仅查询目录，应用后才查询新范围。Agent新范围进入新会话，历史会话仍锁定来源。发布及保存人群明确调用原接口，版本、批次、预览时效、幂等和知识审核哈希校验保持。
 
-请求以对应模块contracts中的DTO和严格Zod校验为准，响应使用VO。所有受保护接口校验本地JWT，机构/角色由服务端注入，不接受客户端自报权限。公开标签查询另按显式机构选择公开目录。
+请求以对应模块contracts中的DTO和严格Zod校验为准，响应使用VO。所有受保护接口校验本地JWT，机构/角色由服务端注入，不接受客户端自报权限。原公开标签URL同样要求登录并限定所属公司。
 
 ## 身份、范围与结果
 
-角色admin管理本机构业务与账号，可继续本机构任意Agent会话；operator可业务读写、知识审核及确认，只能继续自己创建的会话；viewer只读本机构已保存结果，可查指标、知识和画像，不能执行Agent或发布。当前未配置按账号细分的校区权限。
+角色admin管理本机构业务与账号，可继续本机构任意Agent会话；operator可业务读写、知识审核及确认，只能继续自己创建的会话；viewer可读取本机构结果并使用只读Agent问答，不能准备或确认写操作。当前未配置按账号细分的校区权限。
 
 AnalysisScope：startDate、endDate、campusIds、courseIds、channelIds、可选dataCutoff。首尾日包含，日期有序，维度数组默认为空；organizationId和authorizedCampusIds只能由服务器提供。
 

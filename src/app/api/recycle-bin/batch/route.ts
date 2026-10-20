@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {authMiddleware} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {z} from 'zod';
@@ -14,7 +15,7 @@ import {MESSAGES} from '@/shared/messages/index';
  * @response 204
  * @openapi
  */
-export async function DELETE(request: NextRequest) {
+async function DELETEHandler(request: NextRequest) {
     const authError = await authMiddleware(request);
     if (authError) return authError;
 
@@ -39,3 +40,5 @@ export async function DELETE(request: NextRequest) {
         return handleAPIError(error);
     }
 }
+
+export const DELETE=withCompanyRoute(DELETEHandler);

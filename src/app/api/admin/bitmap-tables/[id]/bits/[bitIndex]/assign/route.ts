@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import { NextRequest, NextResponse } from 'next/server';
 import {authMiddleware, getCurrentUser} from '@/modules/identity/server';
 import {getBitmapApplicationService} from '@/modules/tag/server';
@@ -8,7 +9,7 @@ const assignBitSchema = z.object({
   tagId: z.string().uuid(),
 });
 
-export async function POST(
+async function POSTHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; bitIndex: string }> }
 ) {
@@ -54,7 +55,7 @@ export async function POST(
   }
 }
 
-export async function DELETE(
+async function DELETEHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; bitIndex: string }> }
 ) {
@@ -92,3 +93,6 @@ export async function DELETE(
     return handleAPIError(error);
   }
 }
+
+export const POST=withCompanyRoute(POSTHandler);
+export const DELETE=withCompanyRoute(DELETEHandler);

@@ -25,7 +25,20 @@ function answer(messages){
  if(user.includes('测试未知工具'))return tool('publish_tag',{});
  if(user.includes('测试恶意参数'))return tool('query_metrics',{organizationId:'forged'});
  if(user.includes('测试循环上限'))return tool('query_metrics',{});
- if(messages.some(m=>m.role==='system'&&String(m.content).includes('集团年度财务分析助手'))){
+ // 明确的页面代办验收分支；只给出工具调用，数据与对象均由真实测试业务服务处理。
+ if(user.includes('__agent_plan_e2e__:')){
+  const marker=user.match(/__agent_plan_e2e__:(attendance|combination):(\d+)/),combination=marker?.[1]==='combination',suffix=marker?.[2]??'fixture';
+  if(!results.some(result=>result.name==='query_metrics'))return tool('query_metrics',{});
+  if(!results.some(result=>result.name==='search_knowledge'))return tool('search_knowledge',{query:'出勤率、未知签到及运营跟进制度',limit:5});
+  const draft=results.find(result=>result.name==='propose_tag');
+  if(!draft){const leaf={type:'attendance_below',thresholdPercent:80,minimumDue:4};return tool('propose_tag',{name:(combination?'真实页面组合关注-':'真实页面出勤关注-')+suffix,rule:combination?{type:'all',conditions:[leaf,{type:'renewal_due',withinDays:30}]}:leaf});}
+  const proposal=draft.body.result?.proposal;
+  if(proposal&&!results.some(result=>result.name==='preview_tag_rule'))return tool('preview_tag_rule',{proposalId:proposal.id,version:proposal.version});
+  if(proposal&&!results.some(result=>result.name==='prepare_action_plan'))return tool('prepare_action_plan',{proposalId:proposal.id,version:proposal.version,segmentName:(combination?'页面组合跟进人群-':'页面出勤跟进人群-')+suffix,task:{action:'核查签到完整性并记录受影响学员的沟通情况',priority:'normal',dueDate:'2026-11-15',reviewMethod:'核对跟进记录与后续同范围的出勤观察',recommendationIndex:0}});
+  const facts=results.flatMap(result=>result.body.facts??[]),seen=new Set(),factIds=facts.filter(fact=>{if(seen.has(fact.id))return false;seen.add(fact.id);return true;}).slice(0,80).map(fact=>fact.id);
+  return complete({content:JSON.stringify({kind:'action',summary:'已查询经营数据并准备标签、人群和跟进任务。请核对规则、覆盖范围及执行安排后确认。',factIds,hypotheses:['原因尚未验证，应先核查签到及服务记录。'],recommendations:['核查未知签到并记录受影响学员的沟通情况，复核后续出勤。'],limitations:['模拟数据仅用于操作验证，不代表真实机构执行效果。']})});
+ }
+ if(messages.some(m=>m.role==='system'&&/集团年度财务分析助手|当前为集团年度公开财务/.test(String(m.content)))){
   if(user.includes('测试财务越权'))return tool('propose_tag',{name:'不应创建',rule:{type:'attendance_below',thresholdPercent:80,minimumDue:4}});
   if(!results.some(r=>r.name==='query_financial_metrics'))return tool('query_financial_metrics',{});
   if(!results.some(r=>r.name==='search_knowledge'))return tool('search_knowledge',{query:'财务毛利费用率年报口径',limit:5});
@@ -33,7 +46,7 @@ function answer(messages){
   return complete({content:JSON.stringify({summary:'已核对年度集团收入、成本和费用事实，原始出处可追溯。',factIds:facts.map(f=>f.id),hypotheses:['费用变化可能与业务安排有关，需核查预算与费用明细。'],recommendations:['由费用负责人复核年度预算与费用明细，核对费用归属和合同，记录偏差原因并在后续披露时复查。'],limitations:['集团年度案例不能推断校区利润、月度流水或模拟学员经营。']})});
  }
  if(messages.some(m=>m.role==='system'&&String(m.content).includes('研究对照的直接模型方案')))return complete({content:'直接模型对照：核查冻结事实，缺少业务原因，建议补齐反馈后复核。'});
- if(messages.some(m=>m.role==='system'&&String(m.content).includes('公开学习数据分析助手'))){
+ if(messages.some(m=>m.role==='system'&&/公开学习数据分析助手|当前为匿名公开学习数据/.test(String(m.content)))){
   if(user.includes('测试学习越权'))return tool('propose_tag',{name:'不应创建',rule:{type:'absence_count',minimumAbsences:2,minimumDue:3}});
   if(!results.some(r=>r.name==='query_learning_metrics'))return tool('query_learning_metrics',{});
   if(!results.some(r=>r.name==='search_knowledge'))return tool('search_knowledge',{query:'OULAD学习活动、点击、平均活跃天数、测评和相对日期口径',limit:5});

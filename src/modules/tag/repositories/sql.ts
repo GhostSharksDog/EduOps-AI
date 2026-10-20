@@ -1,5 +1,4 @@
 import {queryRows, queryOne, type DbClient} from '@/platform/database';
-import {config} from '@/platform/config/index';
 import type {TenantFilterOptions} from '@/platform/get-current-tenant';
 
 /** 将数据库列映射为现有持久化对象，保留少量历史字段名称。 */
@@ -19,7 +18,7 @@ export async function tagOne<T>(sql: string, params: unknown[] = [], client?: Db
 }
 export function ownershipSql(params: unknown[], tenant?: TenantFilterOptions, prefix = ''): string {
   if (!tenant?.tenantId) return '';
-  params.push(tenant.tenantId, config.system.userId);
-  return ` AND ${prefix}owned_by IN ($${params.length - 1}::uuid, $${params.length}::uuid)`;
+  params.push(tenant.tenantId);
+  return ` AND ${prefix}owned_by=$${params.length}::uuid`;
 }
 export const jsonParam = (value: unknown): string | null => value == null ? null : JSON.stringify(value);

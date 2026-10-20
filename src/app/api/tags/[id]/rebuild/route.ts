@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import { NextRequest, NextResponse } from 'next/server';
 import {riskTagRouteAuth as authMiddleware} from '@/modules/tag/server';
 import {getTagActivationApplicationService} from '@/modules/tag/server';
@@ -12,7 +13,7 @@ import { config } from '@/platform/config/index';
  *
  * 根据当前版本重建物化视图（幂等操作）
  */
-export async function PUT(
+async function PUTHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -46,3 +47,5 @@ export async function PUT(
     return handleAPIError(error);
   }
 }
+
+export const PUT=withCompanyRoute(PUTHandler);

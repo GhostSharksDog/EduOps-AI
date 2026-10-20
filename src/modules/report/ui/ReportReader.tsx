@@ -1,0 +1,47 @@
+'use client';
+import {useEffect,useState} from 'react';
+import {Alert,Button,Collapse,Empty,Flex,Skeleton,Table,Tag,Typography} from 'antd';
+import {FileTextOutlined} from '@ant-design/icons';
+import dayjs from 'dayjs';
+import {useAuthStore} from '@/modules/identity/client';
+import {metricLabels} from '@/modules/analytics/contracts';
+import type {OperationalMetric} from '@/modules/analytics/contracts';
+import {ReviewGuide,rememberReviewRecord} from '@/modules/overview/client';
+import {analysisHref,selectionFromSearch} from '@/shared/lib/analysis-navigation';
+import type {ReportVO} from '../contracts';
+export const reportStates={generating:'正在生成',completed:'生成完成',failed:'生成失败'};
+import styles from './Report.module.css';
+const value=(m?:OperationalMetric)=>!m||m.value===null?'—':m.value.toLocaleString('zh-CN',{maximumFractionDigits:2})+(m.unit==='percent'?'%':m.unit==='currency'?'元':'条');
+export default function ReportReader({id,embedded=false}:{id:string;embedded?:boolean}){
+ const token=useAuthStore(s=>s.token),[data,setData]=useState<ReportVO|null>(null),[error,setError]=useState(''),[retry,setRetry]=useState(0);
+ useEffect(()=>{setData(null);setError('');const c=new AbortController();let timer:ReturnType<typeof setTimeout>;const load=async()=>{try{const r=await fetch('/api/reports/'+id,{headers:{Authorization:'Bearer '+token},signal:c.signal}),b=await r.json();if(!r.ok)throw new Error(b.message);setData(b.data);setError('');rememberReviewRecord('reportId',b.data.id);if(b.data.status==='generating')timer=setTimeout(load,5000);}catch(e){if(e instanceof Error&&e.name!=='AbortError')setError(e.message);}};void load();return()=>{c.abort();clearTimeout(timer);};},[id,token,retry]);
+ const download=async()=>{try{const r=await fetch('/api/reports/'+id+'/export',{headers:{Authorization:'Bearer '+token}});if(!r.ok)throw new Error((await r.json()).message);const url=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=url;a.download='运营报告-'+id+'.md';a.click();URL.revokeObjectURL(url);}catch(e){setError(e instanceof Error?e.message:'导出失败');}};
+ const selection=typeof window==='undefined'?null:selectionFromSearch(window.location.search),back=selection?analysisHref('/dashboard/reports',selection):'/dashboard/reports',sourceSelection=data?{datasetId:data.datasetId,scope:data.snapshot.scope}:null,decisionHref=sourceSelection?analysisHref('/dashboard/decisions',sourceSelection,{sourceId:id,reportId:id}):'/dashboard/decisions?sourceId='+id;
+ const facts=data?.answer?.facts.length?data.answer.facts:data?.facts??[];
+ return <Flex vertical gap={14} className={embedded?styles.embeddedReader:styles.page} aria-label="报告阅读区" data-object-id={data?.id}>
+ <header className={styles.heading}><div><span className={styles.eyebrow}>运营观察 · {data?.kind==='weekly'?'每周回顾':'每月回顾'}</span><Typography.Title level={2}><FileTextOutlined/> {data?.kind==='weekly'?'运营周报':'运营月报'}</Typography.Title></div><Flex gap={8} wrap>{!embedded&&<Button href={back}>报告列表</Button>}<Button disabled={data?.status!=='completed'} onClick={download}>导出完整报告</Button></Flex></header>
+ {!embedded&&<ReviewGuide/>}
+ {error&&<Alert type="error" title={error} action={<Button onClick={()=>setRetry(v=>v+1)}>重新加载</Button>}/>}
+ {!data&&!error&&<Skeleton active title paragraph={{rows:5}}/>}
+ {data&&<article className={styles.article}>
+  <div className={styles.articleMeta}><Flex gap={8} wrap align="center"><Tag color={data.snapshot.dataset.origin==='simulated'?'orange':'blue'}>{data.snapshot.dataset.origin==='simulated'?'模拟经营':'公开数据'}</Tag><Typography.Text strong>{data.snapshot.dataset.name}</Typography.Text><span className={styles.period}>{data.snapshot.scope.startDate} 至 {data.snapshot.scope.endDate}</span><Tag>历史冻结结果</Tag><Tag color={data.status==='completed'?'green':data.status==='failed'?'red':'blue'}>{reportStates[data.status]}</Tag><span>截止 {dayjs(data.snapshot.scope.dataCutoff).format('YYYY-MM-DD HH:mm:ss')}</span></Flex></div>
+  <div className={styles.articleBody}>
+   {data.status!=='completed'&&<Alert type={data.status==='failed'?'error':'info'} title={data.status==='failed'?'智能报告生成失败':'正在生成报告'} description={data.errorMessage??'已计算的数据依据保留；完成后自动显示。'}/>}
+   {data.answer?<section className={styles.summary} aria-label="结论"><Typography.Title level={3}>结论</Typography.Title><Typography.Paragraph ellipsis={{rows:3,expandable:true,symbol:'展开原文'}}>{data.answer.summary}</Typography.Paragraph></section>:<Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={data.status==='failed'?'尚无智能结论，可展开核查冻结数据':'等待分析完成'}/>}
+   <section className={styles.numberSection} aria-label="关键数字"><Typography.Title level={3}>关键数字</Typography.Title><div className={styles.facts}>{facts.slice(0,3).map(f=><div className={styles.fact} key={f.id}><span className={styles.factLabel}>{f.label}</span><strong className={styles.factValue}>{f.value===null||f.status!=='ready'?'—':f.value.toLocaleString('zh-CN',{maximumFractionDigits:2})}<small> {f.value===null||f.status!=='ready'?'':f.unit}</small></strong>{(f.value===null||f.status!=='ready')&&<Typography.Text type="secondary" className={styles.unknown}>未知／数据不足</Typography.Text>}</div>)}</div>{!facts.length&&<Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无可核查数字"/>}</section>
+   {data.answer&&!!data.answer.recommendations.length&&<section className={styles.recommendations} aria-label="行动建议"><Typography.Title level={3}>行动建议</Typography.Title>{data.answer.recommendations.slice(0,3).map((v,i)=><div className={styles.recommendation} key={i}><span className={styles.recommendationIndex} aria-hidden="true">{String(i+1).padStart(2,'0')}</span><Typography.Paragraph ellipsis={{rows:2,expandable:true,symbol:'展开'}}>{v}</Typography.Paragraph></div>)}{data.status==='completed'&&<Button type="primary" href={decisionHref}>下一步：安排决策任务</Button>}</section>}
+  </div>
+  <Collapse className={styles.details} items={[{key:'details',label:'查看完整分析 · 指标口径与数据依据',children:<div>
+   <section className={styles.detailSection}><Typography.Title level={4}>全部经营指标</Typography.Title><Typography.Paragraph type="secondary">对比期 {data.snapshot.comparison?.scope.startDate??'无'} 至 {data.snapshot.comparison?.scope.endDate??'无'} · 观察截止 {dayjs(data.snapshot.metrics.find(m=>m.observationCutoff)?.observationCutoff??data.snapshot.scope.dataCutoff).format('YYYY-MM-DD HH:mm:ss')}（北京时间）</Typography.Paragraph><Typography.Paragraph type="secondary">校区 {data.snapshot.scope.campusIds.join('、')||'全部'} · 课程 {data.snapshot.scope.courseIds.join('、')||'全部'} · 渠道 {data.snapshot.scope.channelIds.join('、')||'全部（含未知）'}</Typography.Paragraph><Table pagination={false} scroll={{x:800}} rowKey="code" dataSource={data.snapshot.metrics} columns={[{title:'指标',render:(_,m:OperationalMetric)=>m.displayName??metricLabels[m.code]},{title:'本期',render:(_,m:OperationalMetric)=><Typography.Text strong>{value(m)}</Typography.Text>},{title:'对比期',render:(_,m:OperationalMetric)=>value(data.snapshot.comparison?.metrics.find(p=>p.code===m.code))},{title:'观察状态与口径',render:(_,m:OperationalMetric)=><span>{m.status==='ready'?'可计算':m.status==='not_applicable'?'不适用':'数据不足'} · {m.reason}{m.details.pending?'；待观察 '+m.details.pending:''}</span>}]} /></section>
+   {data.answer&&<>
+    <section className={styles.detailSection}><Typography.Title level={4}>待验证原因</Typography.Title>{data.answer.hypotheses.length?data.answer.hypotheses.map((v,i)=><Typography.Paragraph key={i}>{v}</Typography.Paragraph>):<Typography.Text type="secondary">暂无有依据的原因假设</Typography.Text>}</section>
+    {data.answer.recommendations.length>3&&<section className={styles.detailSection}><Typography.Title level={4}>其他行动建议</Typography.Title>{data.answer.recommendations.slice(3).map((v,i)=><Typography.Paragraph key={i}>{v}</Typography.Paragraph>)}</section>}
+    <section className={styles.detailSection}><Typography.Title level={4}>范围与限制</Typography.Title>{data.answer.limitations.map((v,i)=><Typography.Paragraph key={i}>{v}</Typography.Paragraph>)}</section>
+    <section className={styles.detailSection}><Typography.Title level={4}>全部引用事实</Typography.Title><Table rowKey="id" pagination={false} scroll={{x:550}} dataSource={facts} columns={[{title:'事实',dataIndex:'label'},{title:'值',render:(_,f)=>f.value===null?'未知':f.value+f.unit},{title:'状态',render:(_,f)=>f.status==='ready'?'可核查':'数据不足'}]}/></section>
+   </>}
+   <section className={styles.detailSection}><Typography.Title level={4}>数据依据与业务知识</Typography.Title>{data.evidence.map((e,i)=><div className={styles.evidence} key={i}><Flex align="center" wrap gap={6}><Tag color={e.kind==='knowledge'?'purple':'blue'}>{e.kind==='knowledge'?'业务知识':'指标'}</Tag><Typography.Text>{e.summary}</Typography.Text>{e.kind==='knowledge'&&<Button size="small" href={'/dashboard/knowledge?sourceId='+e.sourceId}>查看原文与版本</Button>}</Flex><Typography.Paragraph type="secondary" style={{margin:'6px 0'}}>来源 {e.sourceId} · 版本 {e.version}</Typography.Paragraph></div>)}</section>
+   <section className={styles.detailSection}><Typography.Title level={4}>执行步骤和导入批次</Typography.Title><Table rowKey="tool" pagination={false} scroll={{x:650}} dataSource={data.steps} columns={[{title:'工具',dataIndex:'tool'},{title:'状态',dataIndex:'status'},{title:'结果摘要',dataIndex:'evidenceIds',render:v=>v.join('、')}]}/><Table style={{marginTop:14}} rowKey="id" pagination={false} scroll={{x:700}} dataSource={data.snapshot.batches} columns={[{title:'数据类型',dataIndex:'kind'},{title:'记录数',dataIndex:'rows'},{title:'批次',dataIndex:'id'},{title:'文件指纹',dataIndex:'hash',ellipsis:true}]}/></section>
+  </div>}]} />
+ </article>}
+ </Flex>;
+}

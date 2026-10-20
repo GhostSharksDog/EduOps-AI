@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { setRequestContext } from '@/platform/request-context';
+import {runWithRequestContext,getRequestContext} from '@/platform/request-context';
 
 vi.mock('pino', () => {
   const loggedMessages: unknown[] = [];
@@ -38,16 +38,14 @@ describe('Enhanced Logger', () => {
   });
 
   it('should include requestId when context is set', async () => {
-    setRequestContext({
+    vi.resetModules();
+    const { log } = await import('@/platform/logger');
+    runWithRequestContext({
       requestId: 'req_test123',
       startTime: Date.now(),
       path: '/api/test',
       method: 'POST',
-    });
-
-    vi.resetModules();
-    const { log } = await import('@/platform/logger');
-    log.info('test message');
-    expect(true).toBe(true);
+    },()=>{log.info('test message');expect(getRequestContext()?.requestId).toBe('req_test123');});
+    expect(getRequestContext()).toBeUndefined();
   });
 });

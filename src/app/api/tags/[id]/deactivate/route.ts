@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import { NextRequest, NextResponse } from 'next/server';
 import {riskTagRouteAuth as authMiddleware} from '@/modules/tag/server';
 import {getTagActivationApplicationService} from '@/modules/tag/server';
@@ -13,7 +14,7 @@ interface DeactivateRequestBody {
   reason?: string;
 }
 
-export async function PUT(
+async function PUTHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -55,3 +56,5 @@ export async function PUT(
     return handleAPIError(error);
   }
 }
+
+export const PUT=withCompanyRoute(PUTHandler);

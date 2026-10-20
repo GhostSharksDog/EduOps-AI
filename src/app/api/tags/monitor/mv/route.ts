@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {z} from 'zod';
 import {authMiddleware} from '@/modules/identity/server';
@@ -10,7 +11,7 @@ const deleteMvSchema = z.object({
   mvNames: z.array(z.string().min(1)).min(1, '至少选择一个MV'),
 });
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   const authError = await authMiddleware(request);
   if (authError) return authError;
 
@@ -65,3 +66,5 @@ export async function POST(request: NextRequest) {
     return handleAPIError(error);
   }
 }
+
+export const POST=withCompanyRoute(POSTHandler);

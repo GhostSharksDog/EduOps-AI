@@ -1,9 +1,10 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {authMiddleware} from '@/modules/identity/server';
 import {handleAPIError} from '@/platform/api-error-handler';
 import {getTargetTableApplicationService, getTargetTableOHSAdapter} from '@/modules/tag/server';
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   const authError = await authMiddleware(request);
   if (authError) return authError;
 
@@ -20,7 +21,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
   const authError = await authMiddleware(request);
   if (authError) return authError;
 
@@ -36,3 +37,6 @@ export async function POST(request: NextRequest) {
     return handleAPIError(error);
   }
 }
+
+export const GET=withCompanyRoute(GETHandler);
+export const POST=withCompanyRoute(POSTHandler);

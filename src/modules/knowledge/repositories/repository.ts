@@ -23,10 +23,19 @@ async function lockedVersion(client:DbClient,id:string,organizationId:string){
 export class DatabaseKnowledgeRepository implements KnowledgeRepository {
  async list(organizationId:string){return(await queryRows<SourceRow>('SELECT * FROM knowledge_source_version WHERE "organizationId"=$1::uuid ORDER BY "createdAt" DESC,version DESC LIMIT 300',[organizationId])).map(stored);}
  async get(id:string,organizationId:string){const row=await queryOne<SourceRow>('SELECT * FROM knowledge_source_version WHERE id=$1::uuid AND "organizationId"=$2::uuid',[id,organizationId]);return row?stored(row):null;}
- async create(input:CreateKnowledgeSourceDTO,organizationId:string,actorId:string,contentHash:string){
-  const logicalSourceId=input.logicalSourceId??randomUUID();
+ async create(input:CreateKnowledgeSourceDTO,organizationId:string,actorId:string,contentHash:string,operationKey?:string){
+  if(operationKey&&input.logicalSourceId)throw new WorkflowError('Agent新材料请求不能同时修改已有知识版本',400);
+  const logicalSourceId=operationKey??input.logicalSourceId??randomUUID();
   return transaction(async client=>{
    await familyLock(client,organizationId,logicalSourceId);let version=1;
+   if(operationKey){
+    const existing=await queryOne<SourceRow>('SELECT * FROM knowledge_source_version WHERE "organizationId"=$1::uuid AND "logicalSourceId"=$2::uuid ORDER BY version ASC LIMIT 1',[organizationId,logicalSourceId],client);
+    if(existing){
+     const period=existing.period as {startDate:string;endDate:string}|null;
+     if(existing.contentHash!==contentHash||existing.kind!==input.kind||(period?.startDate??null)!==(input.period?.startDate??null)||(period?.endDate??null)!==(input.period?.endDate??null)||(existing.dataCutoff?.toISOString()??null)!==(input.dataCutoff?new Date(input.dataCutoff).toISOString():null))throw new WorkflowError('同一知识准备请求已用于不同内容，请重新发起操作',409,'KNOWLEDGE_REQUEST_CONFLICT');
+     return stored(existing);
+    }
+   }
    if(input.logicalSourceId){
     const previous=await queryOne<SourceRow>('SELECT * FROM knowledge_source_version WHERE "organizationId"=$1::uuid AND "logicalSourceId"=$2::uuid ORDER BY version DESC LIMIT 1',[organizationId,logicalSourceId],client);
     if(!previous)throw new WorkflowError('知识来源不存在或无权访问',404);

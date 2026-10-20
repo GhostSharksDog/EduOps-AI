@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import { NextRequest, NextResponse } from 'next/server';
 import {riskTagRouteAuth as authMiddleware} from '@/modules/tag/server';
 import { handleAPIError } from '@/platform/api-error-handler';
@@ -11,7 +12,7 @@ import {getTagValueQueryApplicationService} from '@/modules/tag/server';
  * Query params:
  * - versionId: 可选，版本 ID
  */
-export async function GET(
+async function GETHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; entityId: string }> }
 ) {
@@ -48,3 +49,5 @@ export async function GET(
     return handleAPIError(error);
   }
 }
+
+export const GET=withCompanyRoute(GETHandler);

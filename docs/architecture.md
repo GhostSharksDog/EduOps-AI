@@ -1,5 +1,137 @@
 # 系统架构
 
+## 空间感AI产品前端（2026-10-19）
+
+参考Attio的操作层次、Raycast的光影构图和Linear的产品编排，使用本项目原创素材重构登录、总览、Agent、工作台与行动中心。原四导航、URL、业务接口及数据存储沿用。总览四指标信息带与所选指标／主图组合，事项采用编号清单；Agent保留连续双区及12px输入间距，结果区按不同内容分版式；工作台两重点加四紧凑入口，行动详情为执行简报与折叠依据。
+
+公共Workspace只负责进入时的420ms透明度／位置过渡，不按路由重新key业务组件；明确操作使用220—280ms过渡，状态节点来自实际工具steps。历史切换、主题变化及轮询不重新挂载页面或播放整页进入。减少动画模式关闭上述动效；没有动画框架、视频背景、数字滚动或假进度。
+
+VisualArtwork统一使用next/image加载项目内素材，固定容器避免布局跳动；登录图优先，其他按需加载。断载保留底色、文字和操作。Agent PNG实际alpha范围0—255，原图不转成不透明底；本轮不调整后端、模型配置或数据库。
+
+Windows独立包显式追踪@img/sharp-win32-x64/lib中的DLL，避免原生编码器未收录时优化器静默回传原始PNG。按[Next.js独立部署与依赖追踪说明](https://nextjs.org/docs/app/api-reference/config/next-config-js/output)增加窄范围outputFileTracingIncludes，不复制整个依赖树；验收实际输出的编码、宽度、体积及透明通道，HTTP 200或成功解码不能单独证明压缩已生效。
+
+素材由内置imagegen生成（2026-10-19），原文件复制入public/visuals，未使用参考网站的品牌图。登录图login-spatial.png为1536×1024，Agent图agent-spatial.png为1254×1254，工作台图workbench-spatial.png为2172×724；它们只承担视觉表达，不是业务数据或分析证据。完整提示采用下列共同提示加各自构图提示：
+
+<details><summary>三张原创图片的生成提示</summary>
+
+共同提示：Create an original premium 3D art asset for EduOps AI, a business analytics application. Art direction: sculptural translucent glass, satin blue-violet ribbons, a small mint light accent, deep midnight navy, believable soft studio lighting, rich tactile detail, restrained luxury product photography. Pure artwork only: absolutely no text, letters, numbers, logo, UI, screenshots, charts, school children or identifiable people. The image must be a polished raster render, not a diagram or vector drawing.
+
+登录构图：Wide landscape composition around 3:2. A large elegant loop of milky optical glass intersects a flowing indigo satin ribbon above a dark slate pedestal. Beautiful caustics, delicate grain, subtle pale teal reflections. Sculptural forms occupy lower center and right; the upper left quarter is quiet very dark navy negative space for separately rendered headline text. Background is a seamless dark navy studio with gentle atmosphere. Clean silhouette, photographic depth, avoid wireframes, neon cyberpunk, excessive tiny dots, garish glow.
+
+Agent构图（transparent_background=true）：A single compact floating sculpture of two interlocking translucent lavender and icy-blue glass loops around a small opalescent core, one short satin indigo ribbon and subtle mint highlight. 1:1 square, centered, entire object visible with generous padding on all sides. True transparent background, no backdrop, no floor rectangle and no checkerboard painted into image. A refined dimensional icon-art object that looks beautiful on both a light and a dark application canvas. No shadow cast onto an opaque background.
+
+工作台构图：Wide panoramic composition around 3:1. A close architectural crop of overlapping curved glass sheets and folded indigo satin surfaces, lit along the edges by soft mint and pale lilac light. Sculptures gather toward the right two thirds. Left third is quiet deep navy negative space for live interface text. Real materials and smooth deep shadows, sophisticated editorial still life, no graphs or fake business data. Art direction must coordinate with a glass-loop login sculpture and glass-loop AI assistant emblem.
+
+</details>
+
+## Agent输入区布局（2026-10-19）
+
+输入框与底部操作采用独立网格行和12px行间距；底部使用可换行提示列与固定按钮列，不依赖Ant Design Flex的外边距。输入保留2—4行自动增高，输入法组词期间不执行快捷发送。对话滚动区新增相对定位容器，“查看新消息”锚定该区域底部12px，不再按输入区高度硬编码偏移。沿用原会话、草稿、请求及模型执行逻辑。
+
+## 经营分析完整性与部分结果（2026-10-19）
+
+主指标模型结果只提供实际factId映射，删除混入的breakdown、unknown/details与未注册的旧分子分母／趋势计数。程序原始facts保留样本供页面展示，模型投影去计数；专用query_metric_breakdown支持可选metricCodes并同时过滤事实、分组和程序图表，缺省仍兼容八项。
+
+建议与候选操作中的单次人工动作、再查询／再确认一次属于未来操作意图，和已发生业务次数分开；过去事件、退款执行、人数及金额仍严格核验。当前提示版本evidence-complete-v5保留实际输入与错误路径，不能凭显示标签推算模型成功率。
+
+对明确提出的经营维度分析，结束前检查同一evidenceScopeKey下已完成的query_metrics和相应维度查询，指标筛选须覆盖请求。缺项时最多两次提示补已授权只读工具，占用原六轮／八工具预算；不进入关闭工具的格式修正流程，仍缺则INCOMPLETE_ANALYSIS。历史助手内容只投影状态与澄清，旧建议只保留操作来源索引；不将旧数字／旧结论重新喂成当前事实，原历史页面不改写。
+
+模型解读错误且已有同范围、成功步骤、有证据事实时，answer.partial={kind:facts_only,reasonCode,missingTools?}保存程序结果；原status仍failed、CapabilityResult仍error，研究统计不算完整成功。被拒的模型正文、假设、建议全部丢弃，不删除数字后继续展示。页面用橙色“部分完成”区别数据成功与分析未完成。缺维度查询的源记录拒绝仅解读恢复，包括从旧保存输入可核验原问题的历史记录；无新增状态、表或接口。
+
+## 出勤解读数字校验修复（2026-10-19）
+
+数字绑定增加本轮去重事实的fN短引用和labelN名称引用；完整fact引用继续兼容，渲染后仍使用原事实编号及证据。事实非ready时统一显示未知，不读取遗留value或displayValue。原经营数值、金额、比率和规则参数继续要求绑定，不能因数值在返回结果中出现过便直接放行。
+
+日历文字单独校验：仅当前授权周期及具有证据、ready的对比期／趋势事实提供可用月份与边界日期；跨年裸月份有歧义时须用带年份形式或占位引用。建议中的命令式单次回访、提醒等可作为行动次数，过去已发生次数仍须绑定。格式修正沿用单次预算，使用短引用且保留analysis与有效事实，不重做已完成工具。普通运行和仅解读恢复统一使用此逻辑。
+
+既有steps.runtime增加可选answerValidation，最多保存最近两次失败的轮次、错误码和字段路径；不保存被拒正文、成员信息或密钥，HTTP原脱敏边界不返回内部输入。不新增表、接口、迁移或模型框架，原失败不覆盖。
+
+## Agent上下文操作、程序图表与等待交互（2026-10-19）
+
+结果区的ContextActions由已保存运行、问题、事实、提案、计划、来源模式、权限和范围关系确定，最多两个下一步。普通单项补参直接发起下一轮；多项问题完整选择后合并提交；操作性回答先填入输入区。任何正式业务写入继续走原页面确认。跨范围动作先明确使用所选回答范围，不静默改用当前范围。关键事实优先问题相关主值和已计算变化／对比，分子分母仍保留在完整依据。
+
+visualizations是业务工具直接提供的可选结构化数据，单步最多8图、每图30类和3个系列，单位分别绘制。运行服务校验模式、数据集、公共范围与证据后保存至既有steps JSONB，不将图表配置送给模型。页面先按当前问题的指标、再按图形类型排列，保留最多8图，复用BusinessChart一次展示一图及数据表；未知保留空值与断点。仅解读恢复从原成功步骤复制同一冻结范围的图表，不新增查询、推导数字或改写旧记录。
+
+等待状态分开控制提交和浏览：同一会话有运行时不可再次发送、改规则或确认，但可以起草、查看已存回答及其他会话。切换会话只解除当前浏览请求，服务端仍按原请求记录执行；晚到响应经视图代号、身份和AbortSignal核对，不注入另一会话。输入按会话存入现有身份隔离的应用内存缓冲，新运行完成不能清除后来编辑的文字；关闭窗口沿用离开提醒，无永久草稿表。
+
+系统设置GET经已验证公司身份，只SELECT，不存在时返回原默认值，不创建记录。PUT显式保存并原子合并JSONB配置，保留其他配置片段，写SystemConfig审计；缺身份不回退系统机构。无新增业务表、队列或迁移目录。
+
+## Agent任务记忆、工具路由与解读恢复（2026-10-18）
+
+agent_session.taskState保存可空JSONB任务状态，含revision、明确目标、用户条件、已选对象引用、待补问题及范围指纹。prepare在会话事务锁内提取用户明确输入，变化后递增版本；每轮context.runtime.taskMemory保存当时快照。明确替换条件时移除旧限制，补充条件才追加。显式PATCH检查会话可继续权限、运行状态及expectedRevision，finish采用CAS避免覆盖较新任务。对象在使用前经所属模块重新核验归属、范围和版本；记忆不包含成员名单或可当作当前指标的历史数字。
+
+页面确认产生的实际人群、任务和报告，在正式结果提交后由独立短事务补入记忆：只锁会话，执行记录使用普通读取，避免锁顺序反转。当前目标、条件、范围和修订号必须匹配；completionReceipt记录同一计划最近一次补充的修订号，允许部分成功后的继续处理。用户新目标或后续分析优先，无变化不递增版本，补充失败不改变正式业务结果。
+
+现有工具分guidance、analysis、tag、workflow、knowledge五组。初选由当前用户原文及已核验记忆确定，不增加模型分类请求；select_task_tools最多切换两次并占用原8次工具预算。执行白名单同时受角色、来源模式、任务组及本次模型实际收到的工具定义约束。每轮仍最多6次模型调用、120秒。学习与财务不能借切组访问经营工具。
+
+原context.runtime.freeze保存范围指纹、数据指纹及实际知识版本。对象定位的taskScopeKey按公共业务范围核对，冻结分析另用evidenceScopeKey保留观察截止，避免同一月份不同观察窗口的事实混用。导入完成批次、财务披露记录和可变任务／报告／预警元数据参与数据指纹；查询前后变化时拒绝混合依据。各模块只返回必要元数据摘要，不加载业务正文。知识版本沿原证据核查，草稿不可用于恢复。
+
+retry-interpretation服务仅加载原已结束失败运行的事实、证据和范围，验证后使用prepareRecovery创建新运行，记录recoveryOf。新运行只有context和restore_frozen_facts，不复制工具输入、草稿或操作计划；模型无工具，最多一次格式纠正，短暂HTTP异常沿用一次受控重试且占用原调用预算。恢复不更新会话的scope、taskState或updatedAt；原失败保留。原依据变化或历史记录缺少freeze时要求重新查询。
+
+引擎版本为business-agent-v3，逐轮记录实际toolNames；HTTP只返回安全路由概要与输入摘要，不返回模型输入、完整工具schema或内部冻结元数据。研究评价区分完整业务任务与interpretation_recovery，恢复的零业务调用不计为业务闭环完成。
+
+已有库仅追加以下区块，不执行整份初始化：
+
+```sql
+ALTER TABLE agent_session ADD COLUMN IF NOT EXISTS "taskState" JSONB;
+```
+
+初始化SQL有同名标记区块，项目本地追加工具仅支持显式normal-append或test-append，并核对数据库、字段范围及原记录计数；不新建业务表或迁移目录。
+
+## 独立个人工作台（2026-10-18）
+
+工作台从菜单抽屉改为/dashboard/workbench独立页面，页面和聚合归overview模块。入口目录统一保存路径、分组、说明和可见角色；四个主业务分组不变，工作台及其目录页面单独高亮，不生成大型次级导航。登录仍进入运营总览，进入工作台不继承来源页的范围与对象编号。
+
+个人工作区使用2∶1待办／最近工作分区，平板手机切换分区；常用六入口独立显示，全部功能按数据、知识研究、系统、高级分组，搜索时包含常用业务入口。view、q、type、page、mobilePane保存到URL以支持返回与刷新；原生history传null，请求使用AbortSignal和身份键，防止旧请求覆盖新筛选。
+
+GET /api/workbench在已验证公司上下文中，仅聚合当前账号的有界元数据。decision、agent、knowledge、report、tag、segment各自通过server公开读取方法执行本模块SQL，再由overview合并排序分页。任务按负责人，方案按执行创建者，知识按全机构真实最新版本确定后再筛创建者；最近工作最多六条。没有完整报告、模型输入、知识正文、步骤和成员快照进入首页请求。
+
+各分区独立呈现ready／partial／error，读取失败的数量保持null；全部待办数只在三类数量均已知时计算。读取不调用有超时清理副作用的原报告／Agent详情服务，不执行模型、预警、发布或审核。无新业务表、迁移、访问历史或收藏存储；现有服务端鉴权仍为最终权限边界。
+
+## 分区工作台布局（2026-10-17）
+
+本轮以shared/ui/Workspace提供工具栏、分区网格、带独立滚动的内容区及不覆盖正文的底部操作区。组件仅控制布局；数据请求、选中对象、编辑保护和业务操作继续归所属模块。公共外框使用88px带文字导航、56px页头，按有无页内导航计算可用高度；模块自行处理平板和手机的详情切换。
+
+总览使用紧凑指标带、主分析图与右侧事项；智能分析采用55∶45对话／结果双区，会话列表按需打开，输入不随长结果滚出页面。选中历史消息只切换对应轮次，结果使用该轮冻结来源与范围。标签采用草稿／规则名单／操作摘要，人群复用profile公开客户端画像面板；行动、知识、报告采用目录与详情，报告独立详情复用单一阅读组件。
+
+选择对象同步URL并支持刷新、返回；过时读取使用AbortSignal取消。useBusinessApi增加第四个可选signal参数，兼容已有调用，不改变鉴权头、请求方式和业务契约。分区不增加后台接口、模型工具、业务表或自动写入；人工确认、版本、未知人数、公司连接和证据保留。
+
+原生history写入使用null，让Next.js同步搜索参数；复用旧history.state中的内部标记会使地址变更但选中对象未更新。相同地址不新增历史项；取消旧请求、明确对象错误与返回无对象状态分别处理。标签步骤采用可聚焦的四等列按钮，移动端图标与文字上下排列；侧栏中文名称和固定操作区使用实际元素尺寸检查。
+
+首轮先完成代码、指南和文档，再集中检查。本轮的结构验收以栏位、滚动容器、首屏图表及固定输入为准，旧配色截图不能代替本轮布局验收。
+
+## 杂志式数据界面（2026-10-15）
+
+统一设计源为shared/theme/palette.ts，集中定义浅／深色配色、系统字体和CSS变量；theme.config.ts将同一组值映射到Ant Design，ThemeProvider只负责偏好及变量应用，根布局提供浅色首屏默认值。公共CSS负责布局与通用状态，专属构图由各模块CSS Module管理，不在页面重复建立主题Provider。默认浅色，沿用education-theme偏好。
+
+深墨导航、暖白画布、青绿选中指标和局部紫色分析结论建立视觉重点；四项主导航和所有原URL保留。总览标题合并数据集选择，主趋势／校区对比为2∶1；智能分析控制阅读宽度，操作确认卡独立呈现；标签／人群／画像及行动中心保留实际操作流程。其他页面继承公共标题、表单、表格及状态样式。
+
+BusinessChart和chart-options读取同一配色及字体，保留ResizeObserver、资源释放、主题切换、空结果、真实零值、未知断点及数据表入口。所有装饰仅为CSS或SVG，不代替实际指标，不增加请求。响应式布局及减少动画偏好由公共样式和模块样式共同处理。本轮不改API、数据库、模型配置、公司隔离或人工确认规则。
+
+## 连续协作Agent与独立公司数据库（2026-10-14）
+
+本轮将公司连接路由作为全系统基础，Agent在业务工具网关内执行。每家公司分别拥有PostgreSQL业务库与ClickHouse事件库，账号、知识、会话、标签、人群、报告和决策记录均留在所属公司；数据库实例可以共用。原公司映射现有数据库，不迁移或重新初始化。
+
+- 公司注册表仅保存名称、编号、代码和环境变量引用，实际连接由服务端解析。登录选择公司并在该公司的local_user验证；JWT每次请求重查启用状态、当前角色和所属公司。
+- API统一通过withCompanyRoute验证身份，再用AsyncLocalStorage.run绑定数据库上下文。缺上下文、未知公司或重复配置为同一数据库均拒绝；外部身份头不能选择连接。CLI通过runCompanyCommand显式选择公司。
+- PostgreSQL池、ClickHouse客户端/建表检查及Redis缓存按公司区分；客户端身份变化中止旧请求、清缓存并卸载工作区。仅专用_test测试入口可显式装载测试默认上下文。
+- 工具网关校验严格参数、模式、角色和范围，调用已有业务服务。模型不能传SQL、公司身份、连接或确认凭据；正式动作没有模型执行工具。
+- 回答区分交流、澄清、分析与操作准备。教程和问候不必查询数据库；分析事实来自本轮工具。数值通过事实占位符由程序渲染，日期/参数来自已验证范围与规则。
+- 会话固定公司，范围可以在后续轮次明确调整。每轮在steps JSONB保存context；变更前为旧记录补充原范围元数据，不改写回答、数字或证据。决策来源使用执行自身范围，不使用会话最新范围。
+- 已保存对象可在后续对话定位和继续操作；有歧义时询问。公开学习、经营、财务使用不同工具集合，不混算。
+- 操作计划保存在执行steps JSONB，包含版本、步骤、证据、批次、预览有效期及执行记录。正式操作由确认接口串行执行，逐步幂等，失败保留已完成对象；不宣称跨服务的多步操作具有单一数据库事务的原子性。
+- 知识只自动保存草稿，人工审核和索引规则保持。标签发布、人群保存、报告生成和任务建立可集中确认；删除、权限变更、DDL及外部消息不开放给模型。
+- 连续交流的历史对象按最近优先保留完整JSON，省略很长的页面URL和重复文本；超过预算按记录取舍，不把半截JSON当作上下文。范围切换前的步骤保留原范围，当前事实不会混入旧范围。
+- 研究评价通过只读服务比较旧/新执行。实际模型输入的增量轨迹仅保存在原steps JSONB作为内部审计，所有Agent HTTP出口统一过滤原始轨迹；客户端只得到安全版本、模型和摘要。历史缺失输入、版本或同条件依据时只作描述性比较，人工任务完成评价保持待评阅。
+- 同来源任务在准备、确认和正式创建锁内核验安排；管理员代确认不会改变原定负责人。名单复用保留实际名称，失败报告保留记录并重新准备独立计划。
+
+模型执行仍限6轮、8次工具和120秒；只读瞬时错误最多重试一次，写工具不自动重试。多步正式操作独立于模型预算执行，并记录可恢复进度。未确认计划、过期预览与变化批次不能继续发布。
+
+模型请求收到502／503／504时，每次运行最多等待约1秒恢复一次；模型密钥、权限、额度、限流、格式或网络错误不走此恢复。恢复请求计入6次实际调用，最后一次无工具收尾预算保留，不重放此前已完成的业务工具。context.runtime.recovery保留等待／成功／失败，输入增量的retryOfRound绑定被重发的原请求；研究评价统计真实模型调用，恢复不计作业务工具。模型解读失败与已完成查询分别展示，历史记录不改写。
+
+先完成本轮全部代码、指南及文档，再集中验收。后续历史章节保留各阶段设计背景；会话范围、公司隔离和确认机制以本节为准。
+
+
 ## 常用任务与详情分层（2026-10-14）
 
 - 四个常用导航，指标/渠道、标签/画像、预警/报告使用页面内导航；数据、知识、研究、系统和高级能力在工作台。URL及业务接口保持兼容。
@@ -11,7 +143,7 @@
 
 本轮变更集中在导航/总览与公共范围栏、Agent/报告结果阅读、标签/人群/画像四步流程、知识/帮助页面。新增的RangeEditor只管理当前编辑状态及目录查询，应用才改变会话范围；模型输出仍保存原完整结构。知识手机布局将状态和主操作移入材料列，避免横向查找。范围编辑按需挂载，日期对象仅在日期值变化时重新生成，目录加载不会覆盖输入。
 
-项目面向单机构、多校区的运营管理。技术基础为Next.js、React、TypeScript、Ant Design、PostgreSQL/pgvector与ClickHouse；Redis可选。PostgreSQL通过pg连接池和参数化SQL访问。
+每个公司独立管理自己的多校区数据。技术基础为Next.js、React、TypeScript、Ant Design、PostgreSQL/pgvector与ClickHouse；Redis可选。PostgreSQL通过pg连接池和参数化SQL访问。
 
 ## 模块与职责
 
@@ -78,7 +210,7 @@ Agent请求内执行，最多6轮模型请求、8次工具、120秒；单次模�
 
 新环境只使用database/init.sql一次初始化，启用vector扩展并创建有效表/索引。已有数据库检查结构后继续使用，应用启动不运行初始化或迁移。根Compose保留既有数据卷，app/tools/cache为可选profile。
 
-模拟经营计算保留内存聚合和全量风险预览，公开学习已采用数据库聚合。导入与Agent为同步执行；经营数据库聚合、大规模分页和后台队列仍是后续优化。渠道筛选、通用规则执行、后台队列和建议采用评价仍待完善。
+经营指标、趋势、渠道及招生已接入数据库聚合，人群成员和画像具备分页；原纯计算器继续作独立核验。标签规则的业务事实处理仍有批处理路径。导入与Agent为请求内执行，后台队列及通用规则执行尚未新增；真人体验和建议采用评价仍需实际开展。阶段验收见测试说明，不将历史待办当作当前缺失功能。
 
 ## 全量公开学习分析
 

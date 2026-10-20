@@ -22,7 +22,7 @@ describe('读取真实结果与权限',()=>{
  it.each(['/api/tags','/api/tag-categories','/api/data-sources','/api/data-models','/api/segments','/api/tags/target-tables'])('%s 返回确定分页结构',async path=>{const body=await f.json(path+'?page=1&pageSize=5');expect(Array.isArray(body.items)).toBe(true);expect(Number.isFinite(path==='/api/tags/target-tables'?body.total:body.totalCount)).toBe(true);expect(body.items.length).toBeLessThanOrEqual(5);});
  it.each(['/api/overview','/api/education/datasets','/api/profiles','/api/agent/sessions','/api/knowledge/sources','/api/tags/proposals','/api/segments/risk-snapshots'])('%s 查看已保存结果',async path=>{await f.json(path,'GET',undefined,200,'viewer');});
  it.each(['/api/settings','/api/audit-logs','/api/recycle-bin','/api/admin/bitmap-tables','/api/admin/tag-monitor/status','/api/admin/db-browser/tables'])('%s 限管理员',async path=>{await f.json(path,'GET',undefined,403,'viewer');});
- it.each(['/api/agent/runs','/api/tags/proposals','/api/knowledge/sources','/api/segments/risk-snapshots','/api/data-sources'])('%s 只读用户无法写入',async path=>{await f.json(path,'POST',{},403,'viewer');});
+ it.each(['/api/agent/actions/confirm','/api/tags/proposals','/api/knowledge/sources','/api/segments/risk-snapshots','/api/data-sources'])('%s 只读用户无法写入',async path=>{await f.json(path,'POST',{},403,'viewer');});
  it.each(['/api/tags/'+missing,'/api/data-sources/'+missing,'/api/data-models/'+missing,'/api/segments/'+missing,'/api/tags/target-tables/'+missing,'/api/agent/runs/'+missing,'/api/agent/sessions/'+missing,'/api/knowledge/sources/'+missing,'/api/tags/proposals/'+missing,'/api/segments/risk-snapshots/'+missing])('%s 不存在对象返回404',async path=>{await f.json(path,'GET',undefined,404);});
 });
 
@@ -33,11 +33,11 @@ describe('公开目录和标签值请求边界',()=>{
   '/api/public/tags/values?entityIds='+missing,'/api/public/tags/values?tagId='+missing,'/api/public/tags/values?tagId='+missing+'&entityIds=',
   '/api/public/tags/values?tagId=invalid&entityIds='+missing,'/api/public/tags/values?tagId='+missing+'&entityIds=invalid',
   '/api/public/tags/values?tagId='+missing+'&entityIds='+Array.from({length:1001},()=>'x').join(','),
- ])('%s 非法请求400',async path=>{const response=await fetch(f.base+path,{headers:{'x-tenant-id':f.org}});expect(response.status).toBe(400);});
- it.each(['/api/public/tags','/api/public/tags/values'])('%s 缺失和非法机构选择器返回400',async path=>{
-  for(const headers of [{},{'x-tenant-id':'invalid'}] as Record<string,string>[]){const response=await fetch(f.base+path,{headers});expect(response.status).toBe(400);}
+ ])('%s 非法请求400',async path=>{const response=await fetch(f.base+path,{headers:{Authorization:'Bearer '+f.users.admin.token,'x-tenant-id':f.otherOrg}});expect(response.status).toBe(400);});
+ it.each(['/api/public/tags','/api/public/tags/values'])('%s 缺少身份时即使伪造机构选择器也返回401',async path=>{
+  for(const headers of [{},{'x-tenant-id':'invalid'}] as Record<string,string>[]){const response=await fetch(f.base+path,{headers});expect(response.status).toBe(401);}
  });
  it('公开值按编号和名称查询不存在标签均404',async()=>{
-  for(const selector of ['tagId='+missing,'tagName=API不存在公开标签']){const response=await fetch(f.base+'/api/public/tags/values?'+selector+'&entityIds='+missing,{headers:{'x-tenant-id':f.org}});expect(response.status).toBe(404);}
+  for(const selector of ['tagId='+missing,'tagName=API不存在公开标签']){const response=await fetch(f.base+'/api/public/tags/values?'+selector+'&entityIds='+missing,{headers:{Authorization:'Bearer '+f.users.admin.token,'x-tenant-id':f.otherOrg}});expect(response.status).toBe(404);}
  });
 });

@@ -1,9 +1,10 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {authMiddleware, adminMiddleware, getCurrentUser} from '@/modules/identity/server';
 import {getBitmapApplicationService, getBitmapOHSAdapter} from '@/modules/tag/server';
 import {handleAPIError} from '@/platform/api-error-handler';
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
     const authError = await authMiddleware(request);
     if (authError) return authError;
     const user=getCurrentUser(request);
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
 }
 
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
     const authError = await authMiddleware(request);
     if (authError) return authError;
     const user=getCurrentUser(request);
@@ -53,3 +54,6 @@ export async function POST(request: NextRequest) {
         return handleAPIError(error);
     }
 }
+
+export const GET=withCompanyRoute(GETHandler);
+export const POST=withCompanyRoute(POSTHandler);

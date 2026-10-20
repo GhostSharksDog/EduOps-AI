@@ -6,6 +6,9 @@
  */
 import '@testing-library/jest-dom/vitest';
 import { vi } from 'vitest';
+import {configureTestCompanyContext} from '@/platform/company/context';
+import {getDefaultCompany} from '@/platform/company/registry';
+configureTestCompanyContext(getDefaultCompany().code);
 
 // Mock server-only module for testing
 vi.mock('server-only', () => ({}));

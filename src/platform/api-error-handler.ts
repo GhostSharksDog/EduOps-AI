@@ -1,5 +1,4 @@
 import {CapabilityUnavailableError} from '@/shared/contracts/unavailable';
-import {notFound} from 'next/navigation';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { log } from '@/platform/logger';
@@ -9,28 +8,6 @@ import { createApiErrorResponse } from '@/shared/schemas/response/api-error.sche
 
 export function is404Response(response: Response): boolean {
     return response.status === 404;
-}
-
-export function handle404Response(response: Response): void {
-    if (is404Response(response)) {
-        notFound();
-    }
-}
-
-export async function safeFetch<T>(
-    fetchPromise: Promise<Response>
-): Promise<T | null> {
-    try {
-        const response = await fetchPromise;
-        if (is404Response(response)) {
-            notFound();
-            return null;
-        }
-        return (await response.json()) as T;
-    } catch (error) {
-        log.error('API request failed', error as Error);
-        return null;
-    }
 }
 
 export class ApiResponseError extends Error {

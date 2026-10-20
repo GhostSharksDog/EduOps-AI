@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import { NextRequest, NextResponse } from 'next/server';
 import {riskTagRouteAuth as authMiddleware} from '@/modules/tag/server';
 import {getTagActivationApplicationService} from '@/modules/tag/server';
@@ -27,7 +28,7 @@ interface UpdateTagRuleRequestBody {
   steps?: Array<{ order: number; sql: string }>;
 }
 
-export async function POST(
+async function POSTHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -79,3 +80,5 @@ export async function POST(
     return handleAPIError(error);
   }
 }
+
+export const POST=withCompanyRoute(POSTHandler);

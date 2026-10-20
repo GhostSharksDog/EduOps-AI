@@ -38,8 +38,10 @@ describe('位图和标签监控真实管理操作',()=>{
  it('物化视图状态列表只包含当前机构标签',async()=>{
   const created:Record<string,string>={};
   for(const role of ['admin','outsider']){
-   const category=await f.json('/api/tag-categories','POST',{name:'API监控状态分类'},201,role),tag=await f.json('/api/tags','POST',{name:'API监控状态标签',categoryId:category.id,dataType:'STRING'},201,role),version=await f.json('/api/tags/'+tag.id+'/versions','POST',{tagId:tag.id,version:'v1'},201,role);
-   await f.json('/api/tags/'+tag.id+'/versions/current','PUT',{versionId:version.id},200,role);
+   const category=await f.json('/api/tag-categories','POST',{name:'API监控状态分类-'+role},201),tag=await f.json('/api/tags','POST',{name:'API监控状态标签-'+role,categoryId:category.id,dataType:'STRING'},201),version=await f.json('/api/tags/'+tag.id+'/versions','POST',{tagId:tag.id,version:'v1'},201);
+   await f.json('/api/tags/'+tag.id+'/versions/current','PUT',{versionId:version.id});
+   // 由专用库夹具注入归属冲突，未登记公司不能通过应用登录或创建对象。
+   if(role==='outsider'){for(const [table,id]of [['tag_category',category.id],['tag',tag.id],['tag_version',version.id]])await f.pool.query('UPDATE '+table+' SET owned_by=$2 WHERE id=$1',[id,f.otherOrg]);}
    await f.pool.query("INSERT INTO materialized_view_config(tag_id,version_id,mv_name,mv_result_table,refresh_interval,owned_by) VALUES ($1,$2,$3,$4,'REALTIME',$5)",[tag.id,version.id,'api_missing_mv_'+randomUUID().replaceAll('-',''),'api_missing_target_'+randomUUID().replaceAll('-',''),role==='admin'?f.org:f.otherOrg]);created[role]=tag.id;
   }
   const admin=await f.json('/api/admin/tag-monitor/status');expect(admin.data.some((v:{tagId:string})=>v.tagId===created.admin)).toBe(true);expect(admin.data.some((v:{tagId:string})=>v.tagId===created.outsider)).toBe(false);
@@ -52,6 +54,6 @@ describe('位图和标签监控真实管理操作',()=>{
   const id=randomUUID();await f.pool.query("INSERT INTO segment(id,name,owned_by,entity_type,compute_type,status,created_by,feature) VALUES ($1,'API已保存人群',$2,'STUDENT','OFFLINE','ACTIVE',$3,'{}'::jsonb)",[id,f.org,f.users.admin.id]);
   const list=await f.json('/api/segments?name='+encodeURIComponent('API已保存人群'));expect(list.items.some((v:{id:string})=>v.id===id)).toBe(true);
   expect((await f.json('/api/segments/'+id)).name).toBe('API已保存人群');await f.json('/api/segments/'+id,'GET',undefined,404,'outsider');
-  const other=await f.json('/api/segments','GET',undefined,200,'outsider');expect(other.items.some((v:{id:string})=>v.id===id)).toBe(false);
+  const other=await f.json('/api/segments','GET',undefined,401,'outsider');expect(other.error).toBeTruthy();
  });
 });

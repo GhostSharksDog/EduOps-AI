@@ -9,7 +9,7 @@ export interface KnowledgeIndexClaim {source:KnowledgeStoredSource;attemptId:str
 export interface KnowledgeRepository {
  list(organizationId:string):Promise<KnowledgeStoredSource[]>;
  get(id:string,organizationId:string):Promise<KnowledgeStoredSource|null>;
- create(input:CreateKnowledgeSourceDTO,organizationId:string,actorId:string,contentHash:string):Promise<KnowledgeStoredSource>;
+ create(input:CreateKnowledgeSourceDTO,organizationId:string,actorId:string,contentHash:string,operationKey?:string):Promise<KnowledgeStoredSource>;
  revise(id:string,organizationId:string,input:{title:string;content:string;expectedContentHash:string;contentHash:string}):Promise<KnowledgeStoredSource>;
  claimIndex(id:string,organizationId:string,actorId:string,expectedVersion:number,expectedContentHash:string,config:{model:string;fingerprint:string}):Promise<KnowledgeIndexClaim>;
  completeIndex(claim:KnowledgeIndexClaim,chunks:string[],vectors:number[][],config:{model:string;fingerprint:string}):Promise<KnowledgeStoredSource>;

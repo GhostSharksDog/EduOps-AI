@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {riskSegmentRouteAuth as authMiddleware} from '@/modules/segment/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {z} from 'zod';
@@ -11,7 +12,7 @@ import {handleAPIError} from '@/platform/api-error-handler';
  * @response segmentSchema
  * @openapi
  */
-export async function GET(
+async function GETHandler(
     request: NextRequest,
     {params}: { params: Promise<{ id: string }> }
 ) {
@@ -36,3 +37,5 @@ export async function GET(
         return handleAPIError(error);
     }
 }
+
+export const GET=withCompanyRoute(GETHandler);

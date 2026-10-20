@@ -22,10 +22,11 @@ function bitmapBitValue(position: number): bigint {
  * 支持 Refreshable MV 操作（需要 CH 24.8+）
  */
 export class ClickHouseClientAdapterImpl implements IClickHouseClientAdapter {
-  private config: ClickHouseConfig;
+  private readonly explicitConfig?: ClickHouseConfig;
+  private get config():ClickHouseConfig {return this.explicitConfig??this.getConfigFromEnv();}
 
   constructor(config?: ClickHouseConfig) {
-    this.config = config || this.getConfigFromEnv();
+    this.explicitConfig = config;
   }
 
   /**
@@ -140,7 +141,7 @@ export class ClickHouseClientAdapterImpl implements IClickHouseClientAdapter {
       const resp = await fetch(url, {
         method: 'POST',
         body: 'SELECT 1',
-        headers: { 'Content-Type': 'text/plain' },
+        headers: this.authenticationHeaders(cfg),
         signal: AbortSignal.timeout(10000),
       });
       return resp.ok;
@@ -160,7 +161,7 @@ export class ClickHouseClientAdapterImpl implements IClickHouseClientAdapter {
       const resp = await fetch(url, {
         method: 'POST',
         body: `${sql} FORMAT JSON`,
-        headers: { 'Content-Type': 'text/plain' },
+        headers: this.authenticationHeaders(),
         signal: AbortSignal.timeout(30000),
       });
       if (!resp.ok) {
@@ -180,7 +181,7 @@ export class ClickHouseClientAdapterImpl implements IClickHouseClientAdapter {
       const resp = await fetch(this.baseUrl(), {
         method: 'POST',
         body: sql,
-        headers: { 'Content-Type': 'text/plain' },
+        headers: this.authenticationHeaders(),
         signal: AbortSignal.timeout(30000),
       });
       if (!resp.ok) {
@@ -284,7 +285,7 @@ export class ClickHouseClientAdapterImpl implements IClickHouseClientAdapter {
     const resp = await fetch(url, {
       method: 'POST',
       body: sql,
-      headers: { 'Content-Type': 'text/plain' },
+      headers: this.authenticationHeaders(),
     });
     if (!resp.ok) {
       const errText = await resp.text();
@@ -296,15 +297,16 @@ export class ClickHouseClientAdapterImpl implements IClickHouseClientAdapter {
    * 获取基础 HTTP URL（不含查询参数）
    */
   private baseUrl(): string {
-    const pass = encodeURIComponent(this.config.password);
-    const db = this.config.database ? `&database=${encodeURIComponent(this.config.database)}` : '';
-    return `http://${this.config.host}:${this.config.port}/?user=${this.config.username}&password=${pass}${db}`;
+    return this.buildUrl(this.config);
   }
 
   private buildUrl(cfg: ClickHouseConfig): string {
-    const pass = encodeURIComponent(cfg.password);
-    const db = cfg.database ? `&database=${encodeURIComponent(cfg.database)}` : '';
-    return `http://${cfg.host}:${cfg.port}/?user=${cfg.username}&password=${pass}${db}`;
+    const url=new URL(/^https?:\/\//.test(cfg.host)?cfg.host:`http://${cfg.host}:${cfg.port}`);
+    if(url.username||url.password)throw new Error('ClickHouse 地址不可包含凭据');
+    url.searchParams.set('database',cfg.database??'default');return url.toString();
+  }
+  private authenticationHeaders(cfg:ClickHouseConfig=this.config):Record<string,string>{
+    return {'Content-Type':'text/plain','X-ClickHouse-User':cfg.username,'X-ClickHouse-Key':cfg.password};
   }
 
   /**

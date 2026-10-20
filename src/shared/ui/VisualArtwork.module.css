@@ -1,0 +1,6 @@
+.artwork{position:relative;min-width:0;overflow:hidden;background:var(--edu-art-background,#101528)}
+.artwork img{object-fit:cover;object-position:center}
+.artwork[data-artwork=agent]{background:transparent}
+.artwork[data-artwork=agent] img{object-fit:contain}
+.artwork[data-image-state=failed]{background:linear-gradient(145deg,#101528,#242b48)}
+.artwork[data-artwork=agent][data-image-state=failed]{background:radial-gradient(ellipse,var(--edu-agent-soft),transparent 68%)}

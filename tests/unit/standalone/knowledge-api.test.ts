@@ -2,7 +2,7 @@ import {beforeEach,describe,it,expect,vi} from 'vitest';
 import {NextRequest,NextResponse} from 'next/server';
 import {canAccess} from '@/modules/identity/contracts/local';
 const mocks=vi.hoisted(()=>({user:{id:'00000000-0000-4000-8000-000000000001',ownedBy:'00000000-0000-4000-8000-000000000002',role:'admin'},list:vi.fn(),create:vi.fn(),get:vi.fn(),revise:vi.fn(),search:vi.fn(),approveAndIndex:vi.fn(),getCapability:vi.fn()}));
-vi.mock('@/modules/identity/server',()=>({getCurrentUser:()=>mocks.user,authMiddleware:async(request:NextRequest)=>{if(!request.headers.get('authorization'))return NextResponse.json({error:'请先登录'},{status:401});if(!canAccess(mocks.user.role,request.method,request.nextUrl.pathname))return NextResponse.json({error:'无权限'},{status:403});}}));
+vi.mock('@/modules/identity/server',()=>({withCompanyRoute:<T>(handler:T)=>handler,getCurrentUser:()=>mocks.user,authMiddleware:async(request:NextRequest)=>{if(!request.headers.get('authorization'))return NextResponse.json({error:'请先登录'},{status:401});if(!canAccess(mocks.user.role,request.method,request.nextUrl.pathname))return NextResponse.json({error:'无权限'},{status:403});}}));
 vi.mock('@/modules/knowledge/server',()=>({knowledgeService:mocks,getCapability:mocks.getCapability}));
 import {GET as list,POST as create} from '@/app/api/knowledge/sources/route';
 import {POST as search} from '@/app/api/knowledge/search/route';

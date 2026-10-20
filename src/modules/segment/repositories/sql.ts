@@ -1,5 +1,4 @@
 import { db, mapRow, queryRows, queryOne, type DbClient } from '@/platform/database';
-import { config } from '@/platform/config';
 import type { TenantFilterOptions } from '@/platform/get-current-tenant';
 type SegmentTable = 'segment' | 'segment_condition' | 'segment_member' | 'segment_calculation_task';
 const snake = (name: string) => name.replace(/[A-Z]/g, c => '_' + c.toLowerCase());
@@ -12,6 +11,6 @@ export async function insertSegmentRow<T>(table: SegmentTable, row: object, clie
 export async function updateSegmentRow<T>(table: SegmentTable, id: string, row: object, client: DbClient = db): Promise<T> { const entries = Object.entries(row).filter(([key, v]) => key !== 'id' && v !== undefined); const result = await segmentOne<T>(`UPDATE ${table} SET ${entries.map(([key], i) => '"' + snake(key) + '"=$' + (i + 1)).join(',')} WHERE id=$${entries.length + 1} RETURNING *`, [...entries.map(([key, v]) => value(key, v)), id], client); if (!result)
     throw new Error('记录不存在'); return result; }
 export function addSegmentOwnership(parts: string[], values: unknown[], filter?: TenantFilterOptions) { if (filter?.tenantId) {
-    values.push(filter.tenantId, config.system.userId);
-    parts.push(`owned_by IN ($${values.length - 1},$${values.length})`);
+    values.push(filter.tenantId);
+    parts.push(`owned_by=$${values.length}`);
 } }

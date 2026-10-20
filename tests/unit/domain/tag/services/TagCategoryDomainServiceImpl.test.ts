@@ -5,6 +5,8 @@ import { ITagFactory } from '@/modules/tag/domain/index';
 import { TagCategory } from '@/modules/tag/domain/entities/TagCategory';
 import { MockFactory } from '../../../../helpers/mock-factory';
 import { generateTestUuid } from '../../../../helpers/constants';
+import {useCompanyUnitFixture} from '@/tests/helpers/company-unit-fixture';
+const companyId=useCompanyUnitFixture();
 
 describe('TagCategoryDomainServiceImpl', () => {
   let service: TagCategoryDomainServiceImpl;
@@ -42,7 +44,7 @@ describe('TagCategoryDomainServiceImpl', () => {
         description: 'Test description',
         orderIndex: 1,
         createdBy: generateTestUuid(),
-        ownedBy: generateTestUuid()
+        ownedBy: companyId
       };
 
       const mockCategory = MockFactory.createTagCategoryVO({
@@ -64,7 +66,7 @@ describe('TagCategoryDomainServiceImpl', () => {
     });
 
     it('rejects an inaccessible parent before constructing or saving a new category',async()=>{
-      const command={name:'新子分类',parentId:generateTestUuid(),description:'',orderIndex:0,createdBy:generateTestUuid(),ownedBy:generateTestUuid()};
+      const command={name:'新子分类',parentId:generateTestUuid(),description:'',orderIndex:0,createdBy:generateTestUuid(),ownedBy:companyId};
       mockRepository.findCategoryById=vi.fn().mockResolvedValue(null);
 
       await expect(service.createCategory(command)).rejects.toThrow('分类不存在');
@@ -80,7 +82,7 @@ describe('TagCategoryDomainServiceImpl', () => {
         description: 'Root level',
         orderIndex: 0,
         createdBy: generateTestUuid(),
-        ownedBy: generateTestUuid()
+        ownedBy: companyId
       };
 
       const mockCategory = MockFactory.createTagCategoryVO({
@@ -227,7 +229,7 @@ describe('TagCategoryDomainServiceImpl', () => {
       const command = {
         categoryId,
         deletedBy: generateTestUuid(),
-        ownedBy: generateTestUuid()
+        ownedBy: companyId
       };
 
       await service.deleteCategory(command);

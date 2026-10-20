@@ -698,6 +698,10 @@ CREATE TABLE "agent_session" (
 
 CREATE INDEX "agent_session_organizationId_updatedAt_idx" ON "agent_session" ("organizationId","updatedAt");
 
+-- BEGIN AGENT_TASK_STATE_APPEND_ONLY: 已有数据库仅追加此区块，不重新初始化。
+ALTER TABLE agent_session ADD COLUMN IF NOT EXISTS "taskState" JSONB;
+-- END AGENT_TASK_STATE_APPEND_ONLY
+
 CREATE TABLE "agent_message" (
   "id" UUID NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
   "organizationId" UUID NOT NULL,

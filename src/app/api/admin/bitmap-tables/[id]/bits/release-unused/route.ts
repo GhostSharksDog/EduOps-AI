@@ -1,9 +1,10 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {authMiddleware, getCurrentUser} from '@/modules/identity/server';
 import {getBitmapApplicationService} from '@/modules/tag/server';
 import {handleAPIError} from '@/platform/api-error-handler';
 
-export async function POST(
+async function POSTHandler(
     request: NextRequest,
     {params}: {params: Promise<{id: string}>}
 ) {
@@ -27,3 +28,5 @@ export async function POST(
         return handleAPIError(error);
     }
 }
+
+export const POST=withCompanyRoute(POSTHandler);

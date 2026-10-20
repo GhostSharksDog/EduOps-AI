@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {getTagRefreshMonitorService} from '@/modules/tag/server';
 import {resolveErrorParamsSchema} from '@/modules/tag/contracts';
@@ -5,7 +6,7 @@ import {log} from '@/platform/logger';
 import {authMiddleware, getCurrentUser} from '@/modules/identity/server';
 import {handleAPIError} from '@/platform/api-error-handler';
 
-export async function PATCH(
+async function PATCHHandler(
   request: NextRequest,
   {params}: {params: Promise<{id: string}>}
 ) {
@@ -34,3 +35,5 @@ export async function PATCH(
     return handleAPIError(error);
   }
 }
+
+export const PATCH=withCompanyRoute(PATCHHandler);

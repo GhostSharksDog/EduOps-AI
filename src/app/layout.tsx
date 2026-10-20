@@ -5,6 +5,7 @@ import {App} from 'antd';
 import ThemeProvider from "@/shared/ui/ThemeProvider";
 import {MessageServiceProvider} from "@/shared/lib/message-service";
 import React from "react";
+import {editorialVariables} from '@/shared/theme/palette';
 export const metadata: Metadata = {
     title: "教培运营分析辅助系统",
     description: "基于业务数据与AI智能体的教培机构运营分析辅助系统",
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({children}: Readonly<{ children: React.ReactNode }>) {
     return (
         <html lang="zh">
-        <body>
+        <body style={editorialVariables(false) as React.CSSProperties}>
         <AntdRegistry>
             <ThemeProvider>
                 <App>

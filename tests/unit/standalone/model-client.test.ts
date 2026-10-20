@@ -45,6 +45,27 @@ describe('模型供应商响应校验',()=>{
   expect(error).toMatchObject({code:'MODEL_NETWORK',diagnostics:{networkReason:'ENOTFOUND'}});
   expect(JSON.stringify(error)).not.toContain('private');
  });
+ it.each(['EPERM','EACCES','ENETUNREACH','EHOSTUNREACH','UND_ERR_SOCKET'])('保留安全网络原因%s，不泄露底层错误正文',async code=>{
+  vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new Error('private-endpoint-and-key',{cause:Object.assign(new Error('private-response'),{code})})));
+  const error=await new CloudModelClient({baseUrl:'https://invalid.example/v1',apiKey:'private-key',model:'test'}).embed(['connection-test']).catch(e=>e);
+  expect(error).toMatchObject({code:'MODEL_NETWORK',diagnostics:{networkReason:code}});
+  expect(JSON.stringify(error)).not.toContain('private');
+ });
+ it('提取多地址AggregateError.errors中的错误码并防止循环遍历',async()=>{
+  const aggregate=new AggregateError([Object.assign(new Error('private-ip-one'),{code:'NOT_ALLOWLISTED'}),Object.assign(new Error('private-ip-two'),{code:'ETIMEDOUT'})],'private-aggregate');
+  aggregate.cause=aggregate;
+  vi.stubGlobal('fetch',vi.fn().mockRejectedValue(new Error('private-key',{cause:aggregate})));
+  const error=await new CloudModelClient({baseUrl:'https://invalid.example/v1',apiKey:'private-key',model:'test'}).embed(['connection-test']).catch(e=>e);
+  expect(error).toMatchObject({code:'MODEL_NETWORK',diagnostics:{networkReason:'ETIMEDOUT'}});
+  expect(JSON.stringify(error)).not.toMatch(/private|NOT_ALLOWLISTED/);
+ });
+ it('循环的未知错误只返回UNKNOWN',async()=>{
+  const error={code:'private-unknown',cause:null as unknown};error.cause=error;
+  vi.stubGlobal('fetch',vi.fn().mockRejectedValue(error));
+  const result=await new CloudModelClient({baseUrl:'https://invalid.example/v1',apiKey:'private-key',model:'test'}).embed(['connection-test']).catch(e=>e);
+  expect(result).toMatchObject({code:'MODEL_NETWORK',diagnostics:{networkReason:'UNKNOWN'}});
+  expect(JSON.stringify(result)).not.toContain('private');
+ });
  it.each([
   ['https://api.deepseek.com',true],
   ['https://api.deepseek.com/v1',true],
@@ -92,5 +113,18 @@ describe('模型供应商响应校验',()=>{
   vi.stubGlobal('fetch',vi.fn().mockImplementation((_url,options)=>Promise.reject(options.signal.reason)));
   const signal=AbortSignal.abort();const client=new CloudModelClient({baseUrl:'http://localhost:29999/v1',apiKey:'test-only',model:'test'});
   await expect(client.chat([{role:'user',content:'test'}],[],{signal})).rejects.toMatchObject({code:'MODEL_TIMEOUT'});
+ });
+ it('响应头已返回后读取正文超时仍为超时，不误报JSON格式错误',async()=>{
+  const controller=new AbortController();
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>{controller.abort();throw controller.signal.reason;}}));
+  const client=new CloudModelClient({baseUrl:'https://model.example/v1',apiKey:'test-only',model:'test'});
+  await expect(client.chat([{role:'user',content:'test'}],[],{signal:controller.signal})).rejects.toMatchObject({code:'MODEL_TIMEOUT'});
+ });
+ it('实际无效JSON与正文网络中断分别保留格式和网络状态',async()=>{
+  const client=new CloudModelClient({baseUrl:'https://model.example/v1',apiKey:'test-only',model:'test'});
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue(new Response('not-json',{status:200})));
+  await expect(client.chat([{role:'user',content:'test'}])).rejects.toMatchObject({code:'INVALID_JSON'});
+  vi.stubGlobal('fetch',vi.fn().mockResolvedValue({ok:true,json:async()=>{throw new Error('private-provider-body-url',{cause:{code:'ECONNRESET'}});}}));
+  await expect(client.chat([{role:'user',content:'test'}])).rejects.toMatchObject({code:'MODEL_NETWORK',diagnostics:{networkReason:'ECONNRESET'}});
  });
 });

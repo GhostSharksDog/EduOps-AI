@@ -4,6 +4,7 @@ import path from 'node:path';
 import {guardOperationsTest} from './operations-fixture';
 import {EducationEventsClient} from '../../src/platform/database/education-events';
 import {db} from '../../src/platform/database';
+import {runStandaloneTestCompany} from '../helpers/standalone-company';
 const args=process.argv.slice(2),input=args[args.indexOf('--results')+1];
 async function main(){
  guardOperationsTest();if(!args.includes('--results')||!input)throw Error('请显式指定已完成的results.json');
@@ -21,4 +22,4 @@ async function main(){
  const report={capturedAt:new Date().toISOString(),status,reason,samples,notes:['maxSingleQueryPeakBytes为每个采样窗口内单条ClickHouse查询记录的最大memory_usage，不是整个数据库进程峰值，也不是并发查询峰值之和。','readRows/readBytes为窗口内涉及education_events_v1的已完成查询合计，重复扫描会重复计数。','只读取既定计量窗口，不输出SQL、绑定参数或业务明细；缓存清理与预热在窗口之外。','应用采样RSS峰值保留在主results.json。']};
  const output=path.join(path.dirname(file),'database-resources.json');await writeFile(output,JSON.stringify(report,null,2));console.log(JSON.stringify({output,status,samples:samples.length}));
 }
-main().catch(error=>{console.error(error instanceof Error?error.message:'资源审计失败');process.exitCode=1;}).finally(()=>db.end());
+Promise.resolve().then(()=>runStandaloneTestCompany(async()=>{try{await main();}finally{await db.end();}})).catch(error=>{console.error(error instanceof Error?error.message:'资源审计失败');process.exitCode=1;});

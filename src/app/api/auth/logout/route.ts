@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {authMiddleware, getCurrentUser} from '@/modules/identity/server';
 import {log} from '@/platform/logger';
@@ -9,7 +10,7 @@ import {MESSAGES} from '@/shared/messages/index';
  * @description 用户登出系统，记录审计日志
  * @openapi
  */
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
     const authError = await authMiddleware(request);
     if (authError) return authError;
 
@@ -42,3 +43,5 @@ export async function POST(request: NextRequest) {
         }, {status: 500});
     }
 }
+
+export const POST=withCompanyRoute(POSTHandler);

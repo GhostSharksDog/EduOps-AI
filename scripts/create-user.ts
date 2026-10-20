@@ -2,19 +2,22 @@ import {config as loadEnv} from 'dotenv';
 import {Pool} from 'pg';
 import {hashPassword} from '../src/modules/identity/domain/password';
 import {localRoles} from '../src/modules/identity/contracts/local';
+import {runCompanyCommand} from './company-context';
+import {requireCompanyContext} from '../src/platform/company/context';
+import {companyPostgresUrl} from '../src/platform/company/registry';
 loadEnv({path:'.env.local',quiet:true});loadEnv({quiet:true});
 async function main(){
  const username=process.env.LOCAL_USER_NAME,password=process.env.LOCAL_USER_PASSWORD,role=process.env.LOCAL_USER_ROLE??'admin';
  if(!username||!password)throw new Error('请通过 LOCAL_USER_NAME 和 LOCAL_USER_PASSWORD 指定账号与密码');
  if(!localRoles.includes(role as typeof localRoles[number]))throw new Error('角色仅支持 admin、operator、viewer');
- if(!process.env.DATABASE_URL)throw new Error('未配置 DATABASE_URL');
- const pool=new Pool({connectionString:process.env.DATABASE_URL});
+ const {company}=requireCompanyContext();
+ const pool=new Pool({connectionString:companyPostgresUrl(company)});
  try{await pool.query(`INSERT INTO local_user(username,password_hash,real_name,role,organization_id,updated_at) VALUES ($1,$2,$3,$4,$5,NOW())`,
-  [username,await hashPassword(password),process.env.LOCAL_USER_REAL_NAME??username,role,process.env.SYSTEM_USER_ID??'6f40f555-5f1b-4d1f-807c-b209e817bfdd']);
+  [username,await hashPassword(password),process.env.LOCAL_USER_REAL_NAME??username,role,company.organizationId]);
   console.log('本地账号已创建；密码未写入日志。');
  }finally{await pool.end();}
 }
-main().catch(error=>{
+Promise.resolve().then(()=>runCompanyCommand(main)).catch(error=>{
  const messages:Record<string,string>={
   '23505':'用户名已存在，本命令不会覆盖已有账号或密码',
   '42P01':'缺少账号表；如果这是新空库，请先运行 npm.cmd run db:init，再创建账号。已有数据库请先核对表结构，不要重新初始化',

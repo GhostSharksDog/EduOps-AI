@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {authMiddleware} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {z} from 'zod';
@@ -13,7 +14,7 @@ import {MESSAGES} from '@/shared/messages/index';
  * @response 204
  * @openapi
  */
-export async function POST(
+async function POSTHandler(
     request: NextRequest,
     {params}: { params: Promise<{ id: string }> }
 ) {
@@ -39,3 +40,5 @@ export async function POST(
         return handleAPIError(error);
     }
 }
+
+export const POST=withCompanyRoute(POSTHandler);

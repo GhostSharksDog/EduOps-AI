@@ -10,7 +10,9 @@ export const userResponseSchema = z.strictObject({
     realName: z.string('真实姓名不能为空').trim().describe('真实姓名'),
     email: z.string().trim().email('邮箱格式不正确').or(z.literal('')).optional().describe('邮箱'),
     role: z.string('角色不能为空').trim().describe('角色'),
-    ownedBy: z.string().optional().describe('租户ID')
+    ownedBy: z.string().optional().describe('租户ID'),
+    companyCode:z.string().optional(),
+    companyName:z.string().optional(),
 });
 
 /**

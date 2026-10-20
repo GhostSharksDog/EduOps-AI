@@ -1,10 +1,11 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {authMiddleware, adminMiddleware, getCurrentUser} from '@/modules/identity/server';
 import {getBitmapApplicationService} from '@/modules/tag/server';
 import {handleAPIError} from '@/platform/api-error-handler';
 import {updateBitmapTableStatusSchema} from '@/shared/schemas/request/bitmap-table/index';
 
-export async function PATCH(
+async function PATCHHandler(
     request: NextRequest,
     {params}: { params: Promise<{ id: string }> }
 ) {
@@ -28,3 +29,5 @@ export async function PATCH(
         return handleAPIError(error);
     }
 }
+
+export const PATCH=withCompanyRoute(PATCHHandler);

@@ -19,13 +19,15 @@ if (env.CLICKHOUSE_PORT !== '18123' || !['localhost', '127.0.0.1'].includes(env.
 const mode=process.argv[2]??'production';
 if(!['dev','production'].includes(mode))throw Error('模式仅允许dev/production');
 const dist = process.env.NEXT_DIST_DIR ?? '.next-validation';
-if(!['.next-validation','.next-ux'].includes(dist))throw Error('生产构建目录无效');
+if(!['.next','.next-validation','.next-ux'].includes(dist))throw Error('生产构建目录无效');
 const server = resolve(root, dist, 'standalone', 'server.js');
 if (mode==='production'&&(!existsSync(server) || !existsSync(resolve(root, dist, 'BUILD_ID')))) throw Error('请先完成所选目录的生产构建');
 delete env.APP_TEST_MODE;
-Object.assign(env, {PORT: '3000', HOSTNAME: '127.0.0.1', NODE_ENV: mode==='dev'?'development':'production', NEXT_TELEMETRY_DISABLED: '1'});
+const localPort=process.env.LOCAL_APP_PORT??'3000';
+if(!['3000','3100'].includes(localPort))throw Error('正常展示只支持本机3000或3100端口');
+Object.assign(env, {PORT: localPort, HOSTNAME: '127.0.0.1', NODE_ENV: mode==='dev'?'development':'production', NEXT_TELEMETRY_DISABLED: '1'});
 if(mode==='dev')env.NEXT_DIST_DIR='.next-normal';
-const child = spawn(process.execPath, mode==='dev'?['node_modules/next/dist/bin/next','dev','-H','127.0.0.1','-p','3000']:[server], {env, stdio: 'inherit', windowsHide: true});
+const child = spawn(process.execPath, mode==='dev'?['node_modules/next/dist/bin/next','dev','-H','127.0.0.1','-p',localPort]:[server], {env, stdio: 'inherit', windowsHide: true});
 child.on('error', () => {console.error('正常展示启动失败'); process.exitCode = 1;});
 child.on('exit', code => {process.exitCode = code ?? 1;});
 for (const signal of ['SIGTERM', 'SIGINT']) process.on(signal, () => child.kill(signal));

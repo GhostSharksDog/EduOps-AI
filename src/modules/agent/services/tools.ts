@@ -10,6 +10,7 @@ import type {AgentFactVO,AgentProposalVO,AgentToolPayload,ToolExecutionContext} 
 import {AgentError} from '../domain/errors';
 import {ToolRegistry} from './registry';
 import {agentTools} from './tool-registry';
+import {operationalMetricVisualizations,metricBreakdownVisualizations} from '../domain/visualization';
 
 export interface AgentBusinessPorts {
   metrics:{query(id:string,scope:AuthorizedScope,codes?:string[]):Promise<OperationalAnalysis>;breakdown?(id:string,scope:AuthorizedScope,dimension:'campus'|'course'|'channel'):Promise<{id:string;name:string;analysis:OperationalAnalysis}[]>};
@@ -31,6 +32,7 @@ const requireContext=(context?:ToolExecutionContext)=>{if(!context)throw new Age
 const success=(data:AgentToolPayload):CapabilityResult<AgentToolPayload>=>({status:'ready',message:'查询或草稿操作已完成',data});
 const metricLabels:Record<string,string>={attendance_rate:'出勤率',class_fill_rate:'满班率',hours_progress:'课耗进度',admission_conversion:'招生转化率',renewal_rate:'续费率',retention_rate:'学员留存率',complaint_count:'客诉数量',refund_amount:'完成退款金额'};
 const uniqueEvidence=(values:EvidenceReference[])=>[...new Map(values.map(e=>[e.id,e])).values()];
+const modelFacts=(values:readonly AgentFactVO[])=>values.map(({numerator:_,denominator:__,...fact})=>fact);
 const safeProposal=(p:AgentProposalVO)=>({id:p.id,kind:p.kind,version:p.version,status:p.status,name:p.name,rule:p.rule,ruleSummary:p.ruleSummary,observedCount:p.observedCount,unknownCount:p.unknownCount,estimatedCount:p.estimatedCount,publishedTagId:p.publishedTagId,evidence:p.evidence});
 export function createAgentToolRegistry(ports:AgentBusinessPorts):ToolRegistry {
   const registry=new ToolRegistry();
@@ -38,21 +40,43 @@ export function createAgentToolRegistry(ports:AgentBusinessPorts):ToolRegistry {
   registry.register(definition('query_metrics'),async(raw,scope,ctx)=>{
     const context=requireContext(ctx),input=raw as {metricCodes?:string[]};
     const result=await ports.metrics.query(context.datasetId,scope,input.metricCodes);context.signal.throwIfAborted();
-    const metrics=result.metrics.map(m=>({...m,evidence:agentEvidence(m.evidence)}));
-    const evidence=uniqueEvidence(metrics.flatMap(m=>m.evidence));
+    const selected=input.metricCodes?new Set(input.metricCodes):undefined;
+    const metrics=result.metrics.filter(m=>!selected||selected.has(m.code)).map(m=>({...m,evidence:agentEvidence(m.evidence)}));
+    const metricSet=new Set(metrics.map(m=>m.code));
+    const baseline=result.comparison?.metrics.filter(m=>metricSet.has(m.code)).map(m=>({...m,evidence:agentEvidence(m.evidence)}));
+    const evidence=uniqueEvidence([...metrics.flatMap(m=>m.evidence),...(baseline?.flatMap(m=>m.evidence)??[])]);
     const facts:AgentFactVO[]=metrics.map(m=>({id:context.toolCallId+':'+m.code,label:m.displayName??metricLabels[m.code]??m.code,value:m.value,unit:m.unit==='currency'?'元':m.unit==='count'?'条':'%',status:m.status,numerator:m.numerator,denominator:m.denominator,evidenceIds:m.evidence.map(e=>e.id)}));
-    for(const item of result.trend.slice(-12))facts.push({id:context.toolCallId+':period:'+item.period,label:item.period+'出勤率',value:item.value,unit:'%',status:item.value===null?'insufficient_data':'ready',numerator:item.present,denominator:item.due,evidenceIds:evidence.map(e=>e.id)});
-    return success({result:{dataset:result.dataset,scope:result.scope,metrics,trend:result.trend.slice(-12),breakdown:result.breakdown.slice(0,20),batches:result.batches,facts},evidence,facts});
+    for(const metric of metrics){
+      for(const field of ['numerator','denominator'] as const)facts.push({id:context.toolCallId+':'+metric.code+':'+field,label:(metric.displayName??metricLabels[metric.code]??metric.code)+'·'+(field==='numerator'?'已识别分子':'统计分母'),value:metric[field],unit:metric.unit==='currency'?'元':metric.code==='hours_progress'?'课时':metric.code==='attendance_rate'?'次':'项',status:metric[field]===null?'insufficient_data':'ready',evidenceIds:metric.evidence.map(e=>e.id)});
+    }
+    if(result.comparison&&baseline){
+      const refs=uniqueEvidence(baseline.flatMap(m=>m.evidence));
+      facts.push({id:context.toolCallId+':comparison:period',label:'对比期',value:null,displayValue:result.comparison.scope.startDate+' 至 '+result.comparison.scope.endDate,unit:'',status:'ready',evidenceIds:refs.map(e=>e.id)});
+      for(const metric of baseline)facts.push({id:context.toolCallId+':previous:'+metric.code,label:'对比期 '+(metric.displayName??metricLabels[metric.code]??metric.code),value:metric.value,unit:metric.unit==='currency'?'元':metric.unit==='count'?'条':'%',status:metric.status,numerator:metric.numerator,denominator:metric.denominator,evidenceIds:metric.evidence.map(e=>e.id)});
+      for(const change of result.comparison.changes.filter(change=>metricSet.has(change.code))){
+        const references=uniqueEvidence([...(metrics.find(m=>m.code===change.code)?.evidence??[]),...(baseline.find(m=>m.code===change.code)?.evidence??[])]);
+        facts.push({id:context.toolCallId+':change:'+change.code,label:(metricLabels[change.code]??change.code)+'周期变化',value:change.change,unit:change.unit,status:change.change===null?'insufficient_data':'ready',evidenceIds:references.map(e=>e.id)});
+      }
+    }
+    const trend=metricSet.has('attendance_rate')?result.trend.slice(-12):[];
+    for(const item of trend)facts.push({id:context.toolCallId+':period:'+item.period,label:item.period+'出勤率',value:item.value,unit:'%',status:item.value===null?'insufficient_data':'ready',numerator:item.present,denominator:item.due,evidenceIds:evidence.map(e=>e.id)});
+    // The model sees only business quantities with usable fact references. Raw group values,
+    // metric details and unregistered historical/trend counts stay in the business service.
+    const metricReferences=metrics.map(metric=>({code:metric.code,label:metric.displayName??metricLabels[metric.code]??metric.code,status:metric.status,unit:metric.unit==='currency'?'元':metric.unit==='count'?'条':'%',factId:context.toolCallId+':'+metric.code,numeratorFactId:context.toolCallId+':'+metric.code+':numerator',denominatorFactId:context.toolCallId+':'+metric.code+':denominator'}));
+    const comparison=result.comparison&&baseline?{scope:result.comparison.scope,periodFactId:context.toolCallId+':comparison:period',metrics:baseline.map(metric=>({code:metric.code,label:metric.displayName??metricLabels[metric.code]??metric.code,status:metric.status,unit:metric.unit==='currency'?'元':metric.unit==='count'?'条':'%',factId:context.toolCallId+':previous:'+metric.code})),changes:result.comparison.changes.filter(change=>metricSet.has(change.code)).map(change=>({code:change.code,unit:change.unit,factId:context.toolCallId+':change:'+change.code}))}:undefined;
+    const visualInput={...result,metrics:result.metrics.filter(metric=>metricSet.has(metric.code)),comparison:result.comparison?{...result.comparison,metrics:result.comparison.metrics.filter(metric=>metricSet.has(metric.code)),changes:result.comparison.changes.filter(change=>metricSet.has(change.code))}:undefined};
+    return success({result:{dataset:result.dataset,scope:result.scope,metrics:metricReferences,comparison,trend:trend.map(item=>({period:item.period,factId:context.toolCallId+':period:'+item.period,status:item.value===null?'insufficient_data':'ready'})),batches:result.batches,facts:modelFacts(facts),next:'本轮经营数值仅通过facts引用。需要校区、课程或渠道分析时，请调用query_metric_breakdown；本结果不代表已完成维度拆解。'},evidence,facts,visualizations:operationalMetricVisualizations(visualInput,context.toolCallId)});
   },z.object({metricCodes:z.array(z.enum(metricCodes)).min(1).max(8).optional()}).strict());
   registry.register(definition('query_metric_breakdown'),async(raw,scope,ctx)=>{
-    const context=requireContext(ctx),input=raw as {dimension:'campus'|'course'|'channel'};
+    const context=requireContext(ctx),input=raw as {dimension:'campus'|'course'|'channel';metricCodes?:string[]};
     if(!ports.metrics.breakdown)throw new AgentError('TOOL_UNAVAILABLE','维度查询尚不可用',503);
     const rows=await ports.metrics.breakdown(context.datasetId,scope,input.dimension);context.signal.throwIfAborted();
+    const selected=input.metricCodes?new Set(input.metricCodes):undefined,filteredRows=rows.slice(0,30).map(row=>({...row,analysis:{...row.analysis,metrics:row.analysis.metrics.filter(metric=>!selected||selected.has(metric.code))}}));
     const facts:AgentFactVO[]=[],evidence:EvidenceReference[]=[];
-    const result=rows.slice(0,30).map(row=>({id:row.id,name:row.name,metrics:row.analysis.metrics.map(m=>{
-      const refs=agentEvidence(m.evidence);evidence.push(...refs);facts.push({id:context.toolCallId+':'+row.id+':'+m.code,label:row.name+' '+(m.displayName??metricLabels[m.code]??m.code),value:m.value,unit:m.unit==='currency'?'元':m.unit==='count'?'条':'%',status:m.status,numerator:m.numerator,denominator:m.denominator,evidenceIds:refs.map(e=>e.id)});return {code:m.code,displayName:m.displayName,value:m.value,status:m.status,numerator:m.numerator,denominator:m.denominator,unknown:m.unknownCount};
-    })}));return success({result:{dimension:input.dimension,groups:result,truncated:rows.length>30},facts,evidence:uniqueEvidence(evidence)});
-  },z.object({dimension:z.enum(['campus','course','channel'])}).strict());
+    const result=filteredRows.map(row=>({id:row.id,name:row.name,metrics:row.analysis.metrics.map(m=>{
+      const refs=agentEvidence(m.evidence),id=context.toolCallId+':'+row.id+':'+m.code,unit=m.unit==='currency'?'元':m.unit==='count'?'条':'%';evidence.push(...refs);facts.push({id,label:row.name+' '+(m.displayName??metricLabels[m.code]??m.code),value:m.value,unit,status:m.status,numerator:m.numerator,denominator:m.denominator,evidenceIds:refs.map(e=>e.id)});return {code:m.code,label:m.displayName??metricLabels[m.code]??m.code,unit,status:m.status,factId:id};
+    })}));return success({result:{dimension:input.dimension,groups:result,truncated:rows.length>30,facts:modelFacts(facts),next:'分组数值只使用对应fact引用；模型结果未返回分组样本计数，不推断分子、分母或未知人数。'},facts,evidence:uniqueEvidence(evidence),visualizations:metricBreakdownVisualizations(filteredRows,input.dimension,context.toolCallId,scope,rows.length)});
+  },z.object({dimension:z.enum(['campus','course','channel']),metricCodes:z.array(z.enum(metricCodes)).min(1).max(8).optional()}).strict());
   registry.register(definition('query_tags'),async(raw,scope,ctx)=>{
     const context=requireContext(ctx),input=raw as {proposalId?:string};
     const records=input.proposalId?[await ports.tags.get(scope.organizationId,input.proposalId)]:await ports.tags.list(scope.organizationId);context.signal.throwIfAborted();
@@ -88,11 +112,11 @@ export function createAgentToolRegistry(ports:AgentBusinessPorts):ToolRegistry {
   },z.object({name:z.string().trim().min(1).max(120),rule:operationalTagRuleSchema}).strict());
   registry.register(definition('preview_tag_rule'),async(raw,scope,ctx)=>{
     const context=requireContext(ctx),input=raw as {proposalId:string;version:number};
-    if(!context.proposalIds?.includes(input.proposalId))throw new AgentError('UNLINKED_PROPOSAL','只能预览本次执行产生的草稿',403);
+    if(![...context.proposalIds??[],...context.sourceProposalIds??[]].includes(input.proposalId))throw new AgentError('UNLINKED_PROPOSAL','请先查询或选择当前会话中的草稿',403);
     const p=await ports.tags.get(scope.organizationId,input.proposalId);
     if(p.datasetId!==context.datasetId||!sameScope(p.scope,scope))throw new AgentError('OUTSIDE_SCOPE','草稿统计范围已变化，请重新发起分析',409);
     context.signal.throwIfAborted();const previewed=await ports.tags.preview(scope.organizationId,input.proposalId,input.version);context.signal.throwIfAborted();
-    const proposal=proposalVO(previewed),facts:AgentFactVO[]=[{id:context.toolCallId+':coverage',label:'风险规则覆盖人数',value:proposal.estimatedCount,unit:'人',status:'ready',evidenceIds:proposal.evidence.map(e=>e.id)}];
+    const proposal=proposalVO(previewed),facts:AgentFactVO[]=[{id:context.toolCallId+':coverage',label:'规则覆盖人数',value:proposal.estimatedCount,unit:'人',status:proposal.estimatedCount===null?'insufficient_data':'ready',evidenceIds:proposal.evidence.map(e=>e.id)},{id:context.toolCallId+':unknown',label:'规则无法判断人数',value:proposal.unknownCount??null,unit:'人',status:proposal.unknownCount===null?'insufficient_data':'ready',evidenceIds:proposal.evidence.map(e=>e.id)}];
     return success({result:{proposal:safeProposal(proposal),observedCount:previewed.preview?.observedCount,unknownStudentCount:previewed.preview?.unknownStudentCount,scope:previewed.preview?.scope,facts},proposal,evidence:proposal.evidence,facts});
   },z.object({proposalId:z.uuid(),version:z.number().int().positive()}).strict());
   return registry;

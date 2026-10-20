@@ -1,6 +1,7 @@
 import type Redis from 'ioredis';
 import type { CacheService } from '@/platform/cache/CacheService';
 import { log } from '@/platform/logger';
+import {companyCacheKey,requireCompanyContext} from '@/platform/company/context';
 
 export class RedisCacheService implements CacheService {
     constructor(private readonly client: Redis) {}
@@ -15,6 +16,7 @@ export class RedisCacheService implements CacheService {
     }
 
     async get<T>(key: string): Promise<T | null> {
+        key=companyCacheKey(key);
         try {
             const data = await this.client.get(key);
             if (!data) return null;
@@ -26,6 +28,7 @@ export class RedisCacheService implements CacheService {
     }
 
     async set(key: string, value: unknown, ttlSeconds: number): Promise<boolean> {
+        key=companyCacheKey(key);
         try {
             const data = JSON.stringify(value);
             await this.client.setex(key, ttlSeconds, data);
@@ -37,6 +40,7 @@ export class RedisCacheService implements CacheService {
     }
 
     async del(key: string): Promise<boolean> {
+        key=companyCacheKey(key);
         try {
             await this.client.del(key);
             return true;
@@ -47,6 +51,7 @@ export class RedisCacheService implements CacheService {
     }
 
     async delPattern(pattern: string): Promise<boolean> {
+        pattern=`company:${requireCompanyContext().company.code}:user:*:${pattern}`;
         try {
             let cursor = '0';
             let totalDeleted = 0;
@@ -79,6 +84,7 @@ export class RedisCacheService implements CacheService {
     }
 
     async exists(key: string): Promise<boolean> {
+        key=companyCacheKey(key);
         try {
             const result = await this.client.exists(key);
             return result === 1;

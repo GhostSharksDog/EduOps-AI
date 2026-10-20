@@ -1,7 +1,10 @@
 import pg from 'pg';
 import {readFile} from 'node:fs/promises';
+import standaloneCompany from '../helpers/standalone-company.ts';
+const {runStandaloneTestCompany}=standaloneCompany;
 const url=new URL(process.env.DATABASE_URL??'');
 if(url.hostname!=='127.0.0.1'||url.port!=='25432'||url.pathname!=='/education_cleanup_test')throw Error('仅允许本机专用education_cleanup_test');
+await runStandaloneTestCompany(async()=>{
 const db=new pg.Client({connectionString:url.toString()}),sql=await readFile('database/init.sql','utf8');
 await db.connect();
 try{
@@ -14,3 +17,4 @@ try{
  const response=await fetch('http://127.0.0.1:28123/',{method:'POST',headers:{Authorization:'Basic '+Buffer.from('default:test_password').toString('base64')},body:'CREATE DATABASE IF NOT EXISTS education_cleanup_test'});if(!response.ok)throw Error('专用ClickHouse测试库初始化失败');
  console.log('专用测试库必要表及ClickHouse已就绪；未访问业务库。');
 }finally{await db.end();}
+});

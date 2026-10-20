@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {authMiddleware} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {z} from 'zod';
@@ -13,7 +14,7 @@ import {MESSAGES} from '@/shared/messages/index';
  * @response dataSourceSchema
  * @openapi
  */
-export async function GET(
+async function GETHandler(
     request: NextRequest,
     {params}: { params: Promise<{ id: string }> }
 ) {
@@ -46,7 +47,7 @@ export async function GET(
  * @response dataSourceSchema
  * @openapi
  */
-export async function PUT(
+async function PUTHandler(
     request: NextRequest,
     {params}: { params: Promise<{ id: string }> }
 ) {
@@ -79,7 +80,7 @@ export async function PUT(
  * @response 204
  * @openapi
  */
-export async function DELETE(
+async function DELETEHandler(
     request: NextRequest,
     {params}: { params: Promise<{ id: string }> }
 ) {
@@ -104,3 +105,6 @@ export async function DELETE(
         return handleAPIError(error);
     }
 }
+export const GET=withCompanyRoute(GETHandler);
+export const PUT=withCompanyRoute(PUTHandler);
+export const DELETE=withCompanyRoute(DELETEHandler);

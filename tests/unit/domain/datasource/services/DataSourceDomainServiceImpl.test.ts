@@ -8,6 +8,8 @@ import { TestConnectionResult } from '@/shared/enums/datasource/index';
 import { CreateDataSourceCommand, UpdateDataSourceCommand, DeleteDataSourceCommand, EnableDataSourceCommand, DisableDataSourceCommand } from '@/modules/data/contracts/datasource/commands/index';
 import { MockFactory } from '../../../../helpers/mock-factory';
 import { TEST_USER_ID } from '../../../../helpers/constants';
+import {useCompanyUnitFixture} from '@/tests/helpers/company-unit-fixture';
+useCompanyUnitFixture(TEST_USER_ID);
 
 describe('DataSourceDomainServiceImpl', () => {
   let service: DataSourceDomainServiceImpl;

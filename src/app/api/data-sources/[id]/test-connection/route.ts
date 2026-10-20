@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {authMiddleware} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {dataSourceApplicationService, dataSourceOHSAdapter} from '@/modules/data/server';
@@ -12,7 +13,7 @@ import {handleAPIError} from '@/platform/api-error-handler';
  * @response testDataSourceConnectionResponseSchema
  * @openapi
  */
-export async function GET(request: NextRequest, {params}: { params: Promise<{ id: string }> }) {
+async function GETHandler(request: NextRequest, {params}: { params: Promise<{ id: string }> }) {
     const authError = await authMiddleware(request);
     if (authError) return authError;
     
@@ -27,3 +28,5 @@ export async function GET(request: NextRequest, {params}: { params: Promise<{ id
         return handleAPIError(error);
     }
 }
+
+export const GET=withCompanyRoute(GETHandler);

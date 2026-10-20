@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {z} from 'zod';
 import {riskTagRouteAuth as authMiddleware} from '@/modules/tag/server';
@@ -12,7 +13,7 @@ import {handleAPIError} from '@/platform/api-error-handler';
  * @response tagSchema
  * @openapi
  */
-export async function PUT(
+async function PUTHandler(
     request: NextRequest,
     {params}: { params: Promise<{ id: string }> }
 ) {
@@ -36,3 +37,5 @@ export async function PUT(
         return handleAPIError(error);
     }
 }
+
+export const PUT=withCompanyRoute(PUTHandler);

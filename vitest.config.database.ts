@@ -28,6 +28,8 @@ export default defineConfig({
     hookTimeout: 30000,
     // Single-threaded execution to avoid database lock conflicts
     pool: 'forks',
+    maxWorkers: 1,
+    fileParallelism: false,
   },
   resolve: {
     alias: {

@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {authMiddleware, adminMiddleware} from '@/modules/identity/server';
 import {handleAPIError} from '@/platform/api-error-handler';
@@ -15,7 +16,7 @@ import {getCurrentUser} from '@/modules/identity/server';
  * 手动触发标签 bitmap 同步
  * 支持增量同步和强制全量同步
  */
-export async function POST(
+async function POSTHandler(
     request: NextRequest,
     {params}: { params: Promise<{ tagId: string }> }
 ) {
@@ -74,3 +75,5 @@ export async function POST(
         return handleAPIError(error);
     }
 }
+
+export const POST=withCompanyRoute(POSTHandler);

@@ -6,6 +6,8 @@ import {hostname} from 'node:os';
 import path from 'node:path';
 import {parse} from 'csv-parse';
 import type {DatasetDTO,RecordKind,ImportResultVO} from '../src/modules/education/contracts';
+import {runCompanyCommand} from './company-context';
+import {requireCompanyContext} from '../src/platform/company/context';
 
 const args=process.argv.slice(2);
 const option=(name:string,fallback:string)=>{const index=args.indexOf(name);if(index<0)return fallback;const value=args[index+1];if(!value||value.startsWith('--'))throw new Error(name+'缺少参数');return value;};
@@ -52,11 +54,10 @@ function validateCheckpoint(checkpoint:Checkpoint,org:string,key:string,director
 async function main(){
     const started=performance.now();let sampledPeakRss=process.memoryUsage().rss;
     loadEnv({path:'.env.local',quiet:true});loadEnv({quiet:true});
-    if(!process.env.DATABASE_URL)throw new Error('请显式配置DATABASE_URL，不使用隐含连接');
     const mode=option('--mode','simulation'),limit=Number(option('--activity-limit','0')),chunk=Number(option('--chunk','5000'));
     if(!['simulation','oulad','finance'].includes(mode)||!Number.isInteger(limit)||limit<0||!Number.isInteger(chunk)||chunk<1||chunk>10000)throw new Error('mode须为simulation/oulad/finance，chunk须为1—10000，activity-limit为非负整数');
     const recover=args.includes('--recover-stopped'),directory=path.resolve(option('--directory',mode==='simulation'?'datasets/generated/training-sim-20261009-v3':mode==='finance'?'datasets/raw/angli-finance':'datasets/raw/oulad'));
-    const org=process.env.SYSTEM_USER_ID??'6f40f555-5f1b-4d1f-807c-b209e817bfdd';
+    const org=requireCompanyContext().company.organizationId;
     if(!/^[0-9a-f-]{36}$/i.test(org))throw new Error('SYSTEM_USER_ID须为有效机构UUID');
     let input:DatasetDTO,files:{kind:RecordKind;file:string}[],declaredRows:Record<string,number>|undefined;
     if(mode==='simulation'){
@@ -159,4 +160,4 @@ async function main(){
         await db.end();const current=await readJson<ImportOwner>(lockFile);if(current?.runId===owner.runId)await unlink(lockFile);
     }
 }
-main().catch(error=>{console.error(error instanceof Error?error.message:'导入失败');process.exitCode=1;});
+Promise.resolve().then(()=>runCompanyCommand(main)).catch(error=>{console.error(error instanceof Error?error.message:'导入失败');process.exitCode=1;});

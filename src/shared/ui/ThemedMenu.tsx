@@ -11,7 +11,7 @@ export default function ThemedMenu(props: ThemedMenuProps) {
     return (
         <Menu
             {...props}
-            theme={isDarkMode ? 'dark' : 'light'}
+            theme={props.theme ?? (isDarkMode ? 'dark' : 'light')}
         />
     );
 }

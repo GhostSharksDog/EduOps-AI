@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {authMiddleware} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {z} from 'zod';
@@ -12,7 +13,7 @@ import {withAudit} from '@/modules/system/server';
  * @response dataModelSchema
  * @openapi
  */
-export async function PATCH(
+async function PATCHHandler(
     request: NextRequest,
     {params}: { params: Promise<{ id: string }> }
 ) {
@@ -37,3 +38,5 @@ export async function PATCH(
         return handleAPIError(error);
     }
 }
+
+export const PATCH=withCompanyRoute(PATCHHandler);

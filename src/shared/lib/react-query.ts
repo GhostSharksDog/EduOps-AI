@@ -1,4 +1,5 @@
-import {QueryClient, QueryCache, MutationCache, QueryClientConfig} from '@tanstack/react-query';
+import {QueryClient, QueryCache, MutationCache, QueryClientConfig,hashKey} from '@tanstack/react-query';
+import {clientIdentityKey} from './client-session';
 import axios from 'axios';
 import {globalMessage} from '@/shared/lib/message';
 import {log} from '@/platform/logger';
@@ -51,6 +52,7 @@ export const queryClient = new QueryClient({
     }),
     defaultOptions: {
         queries: {
+            queryKeyHashFn: key => clientIdentityKey()+':'+hashKey(key),
             staleTime: 5 * 60 * 1000,
             retry: (failureCount, error: unknown) => {
                 if (axios.isAxiosError(error) && error.response?.status === 401) {
@@ -62,3 +64,5 @@ export const queryClient = new QueryClient({
         },
     },
 } as QueryClientConfig);
+
+if(typeof window!=='undefined')window.addEventListener('education-identity-change',()=>{void queryClient.cancelQueries();queryClient.clear();});

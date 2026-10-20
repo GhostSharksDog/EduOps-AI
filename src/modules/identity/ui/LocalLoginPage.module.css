@@ -1,124 +1,48 @@
-.page {
-    min-height: 100vh;
-    min-height: 100dvh;
-    padding: 34px 48px 22px;
-    color: #172b4d;
-    background: radial-gradient(ellipse at 4% 62%, #e9f3ff 0, transparent 46%), radial-gradient(ellipse at 97% 7%, #eff5ff 0, transparent 40%), #f7f9fd;
-}
-
-.shell {max-width: 1260px; min-height: calc(100dvh - 56px); margin: 0 auto; display: flex; flex-direction: column;}
-.brand {display: flex; align-items: center; gap: 13px;}
-.brandSymbol {display: grid; place-items: center; width: 45px; height: 45px; flex-shrink: 0; border-radius: 13px; background: linear-gradient(135deg, #3478f6, #6f66e8); box-shadow: 0 7px 20px #3478f622; color: white; font-size: 25px;}
-.brand h1 {margin: 0 0 5px; color: #193558; font-size: 19px; font-weight: 700; letter-spacing: .25px;}
-.brand p {margin: 0; color: #75859a; font-size: 11px; letter-spacing: 1.3px;}
-.content {flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 76px; align-items: center; padding: 58px 0 64px;}
-.introduction {min-width: 0;}
-.eyebrow {display: inline-flex; align-items: center; gap: 8px; border: 1px solid #cddff7; border-radius: 100px; padding: 6px 12px; color: #4773ad; background: #f6faff; font-size: 12px; font-weight: 600; letter-spacing: .5px;}
-.eyebrow > span {width: 6px; height: 6px; border-radius: 50%; background: #3478f6;}
-.productTitle {margin: 22px 0 18px; color: #173153; font-size: clamp(38px, 3.4vw, 49px); line-height: 1.35; font-weight: 750; letter-spacing: -1.1px;}
-.productTitle > span {color: #3478f6;}
-.productDescription {margin: 0; font-size: 16px; line-height: 1.9; color: #697c95;}
-.workflow {margin-top: 35px; padding: 22px 20px 16px; background: #ffffffbd; border: 1px solid #dce6f3; border-radius: 18px; box-shadow: 0 9px 24px #24467204;}
-.workflowHeading {display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px;}
-.workflowHeading h3 {font-size: 14px; margin: 0; color: #314d6e; font-weight: 650;}
-.workflowHeading > span {font-size: 11px; color: #8291a5;}
-.workflowList {display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; margin: 0; padding: 0; gap: 16px;}
-.workflowStep {position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; min-width: 0; padding: 14px 5px 10px; border: 1px solid #e2eaf6; border-radius: 12px; background: #f9fbff;}
-.stepIcon {width: 39px; height: 39px; display: grid; place-items: center; border-radius: 11px; color: #3478f6; background: #eaf2ff; font-size: 21px; margin-bottom: 12px;}
-.workflowStep[data-tone=purple] {background: #fcfaff; border-color: #e6ddfc;}
-.workflowStep[data-tone=purple] .stepIcon {color: #8560d9; background: #f0eaff;}
-.workflowStep[data-tone=teal] .stepIcon {color: #1c9f9e; background: #e5f6f4;}
-.workflowStep strong {font-size: 13px; color: #3f5571; font-weight: 650; line-height: 1.5;}
-.workflowStep small {font-size: 10px; color: #7c8a9d; line-height: 1.7; margin-top: 4px; white-space: nowrap;}
-.stepArrow {position: absolute; right: -15px; top: 43px; color: #a7b9d3; font-size: 12px;}
-.workflowNote {display: flex; gap: 7px; align-items: center; justify-content: center; margin: 16px 0 0; padding-top: 14px; border-top: 1px solid #e8edf5; color: #7c8a9e; font-size: 11px; line-height: 1.6;}
-.workflowNote :global(.anticon) {color: #5488cf; font-size: 14px;}
-.principles {display: flex; flex-wrap: wrap; list-style: none; gap: 20px; margin: 24px 0 0; padding: 0;}
-.principles li {display: flex; align-items: center; gap: 7px; color: #6c7e95; font-size: 12px;}
-.principles :global(.anticon) {color: #5c92c4; font-size: 12px;}
-
-.loginCard {position: relative; min-width: 0; padding: 36px 36px 27px; background: #fff; border: 1px solid #e0e8f3; border-radius: 22px; box-shadow: 0 18px 52px #2248780b, 0 3px 8px #22487804;}
-.loginCard::before {position: absolute; content: ''; left: 36px; right: 36px; top: 0; height: 3px; border-radius: 0 0 4px 4px; background: linear-gradient(90deg, #3478f6, #60bcdf, #9476e2);}
-.loginSymbol {display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; color: #3478f6; background: #edf4ff; font-size: 23px; margin-bottom: 22px;}
-.loginEyebrow {color: #8b99ac; font-size: 11px; font-weight: 600; letter-spacing: 1px; margin: 0 0 8px;}
-.loginCard h2 {font-size: 28px; line-height: 1.4; font-weight: 700; margin: 0 0 10px; letter-spacing: -.3px;}
-.loginDescription {font-size: 13px; color: #73849a; line-height: 1.85; margin: 0 0 28px;}
-.error {margin-bottom: 18px;}
-.error :global(.ant-alert) {font-size: 13px; border-radius: 10px;}
-.form :global(.ant-form-item) {margin-bottom: 21px;}
-.form :global(.ant-form-item-label) {padding-bottom: 8px;}
-.form :global(.ant-form-item-label > label) {font-size: 13px; font-weight: 600; color: #435671;}
-.form :global(.ant-input-affix-wrapper) {height: 48px; padding-inline: 14px; border-color: #dce4ef; background: #fbfcfe; box-shadow: none;}
-.form :global(.ant-input-affix-wrapper input) {font-size: 14px; background: transparent; min-width: 0;}
-.form :global(.ant-input-prefix) {color: #91a2ba; margin-inline-end: 10px; font-size: 16px;}
-.form :global(.ant-input-affix-wrapper:focus-within) {background: white; border-color: #3478f6; box-shadow: 0 0 0 3px #3478f614;}
-.passwordInput :global(button.ant-input-password-icon) {display: grid; place-items: center; border: 0; background: transparent; padding: 4px; border-radius: 4px; color: #8799b1; cursor: pointer; font-size: 17px; line-height: 1;}
-.passwordInput :global(button.ant-input-password-icon:focus-visible) {outline: 2px solid #3478f6; outline-offset: 3px; color: #3478f6;}
-.passwordInput :global(button.ant-input-password-icon:disabled) {cursor: not-allowed; opacity: .5;}
-.loginButton {height: 48px; font-size: 15px; font-weight: 650; box-shadow: 0 7px 16px #3478f628; margin-top: 6px;}
-.loginButton:focus-visible {outline: 2px solid #3478f6; outline-offset: 4px;}
-.accountNote {display: flex; gap: 8px; align-items: start; border-top: 1px solid #edf0f5; padding-top: 20px; margin-top: 26px;}
-.accountNote :global(.anticon) {font-size: 15px; color: #90a4bb; margin-top: 3px;}
-.accountNote p {font-size: 11px; line-height: 1.85; color: #8b99ac; margin: 0;}
-.footer {display: flex; justify-content: space-between; gap: 12px; border-top: 1px solid #e4eaf3; padding-top: 18px; color: #97a3b4; font-size: 10px; line-height: 1.6;}
-
-@media (min-width: 1700px) {
-    .content {gap: 100px; grid-template-columns: minmax(0, 1fr) 440px;}
-    .productTitle {font-size: 53px;}
-    .loginCard {padding: 42px 38px 32px;}
-}
-
-@media (max-width: 1100px) {
-    .page {padding-inline: 32px;}
-    .content {gap: 36px; grid-template-columns: minmax(0, 1fr) 385px;}
-    .productTitle {font-size: 36px;}
-    .workflow {padding-inline: 14px;}
-    .workflowList {gap: 10px;}
-    .stepArrow {right: -11px; font-size: 9px;}
-    .workflowStep small {font-size: 9px; white-space: normal;}
-    .loginCard {padding-inline: 28px;}
-}
-
-@media (max-width: 840px) {
-    .page {padding: 26px 24px 20px;}
-    .shell {min-height: calc(100dvh - 46px); max-width: 560px;}
-    .content {grid-template-columns: minmax(0, 1fr); gap: 28px; padding: 34px 0;}
-    .brand h1 {font-size: 17px;}
-    .introduction {padding: 0 2px;}
-    .eyebrow {font-size: 11px;}
-    .productTitle {font-size: 35px; margin-top: 17px; margin-bottom: 13px;}
-    .productDescription {font-size: 13px; line-height: 1.8;}
-    .desktopBreak {display: none;}
-    .workflow {margin-top: 23px; padding: 17px 13px 13px;}
-    .workflowHeading {margin-bottom: 12px;}
-    .workflowHeading h3 {font-size: 12px;}
-    .workflowHeading > span {font-size: 10px;}
-    .workflowList {gap: 10px;}
-    .workflowStep {padding: 10px 3px 8px;}
-    .stepIcon {width: 33px; height: 33px; font-size: 18px; margin-bottom: 8px;}
-    .workflowStep strong {font-size: 11px;}
-    .workflowStep small {font-size: 9px; line-height: 1.5; white-space: normal;}
-    .stepArrow {top: 30px;}
-    .workflowNote {margin-top: 12px; padding-top: 10px; font-size: 10px;}
-    .principles {gap: 14px; margin-top: 17px;}
-    .principles li {font-size: 11px; gap: 4px;}
-    .loginCard {padding: 28px 28px 24px; border-radius: 18px;}
-    .loginSymbol {width: 40px; height: 40px; border-radius: 11px; font-size: 20px; margin-bottom: 17px;}
-    .loginCard h2 {font-size: 25px;}
-    .loginDescription {margin-bottom: 22px;}
-    .footer {flex-direction: column; gap: 4px; font-size: 10px; padding-top: 14px;}
-}
-
-@media (max-width: 380px) {
-    .page {padding-inline: 17px;}
-    .brand h1 {font-size: 16px;}
-    .productTitle {font-size: 31px;}
-    .workflow {padding-inline: 10px;}
-    .workflowList {gap: 8px;}
-    .loginCard {padding-inline: 23px;}
-    .principles {gap: 10px;}
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .form :global(.ant-input-affix-wrapper), .loginButton {transition: none;}
-}
+.page{min-height:100dvh;padding:16px;color:var(--edu-ink);font-family:var(--edu-font);background:var(--edu-canvas)}
+.shell{width:100%;max-width:1760px;margin:auto;min-height:calc(100dvh - 32px)}
+.content{display:grid;grid-template-columns:minmax(0,3fr) minmax(370px,2fr);min-height:calc(100dvh - 32px);border:1px solid var(--edu-border);border-radius:28px;overflow:hidden;background:var(--edu-surface);box-shadow:var(--edu-shadow)}
+.introduction{position:relative;min-width:0;overflow:hidden;background:var(--edu-art-background);color:var(--edu-art-ink)}
+.heroArtwork{position:absolute!important;inset:0;animation:artwork-arrive 450ms cubic-bezier(.2,.7,.2,1) both}
+.heroArtwork img{object-position:60% 50%;transform:scale(1.02)}
+.heroShade{position:absolute;inset:0;background:linear-gradient(180deg,#0a102753 0%,transparent 55%,#080c22a8),linear-gradient(90deg,#080e2470,transparent 80%);pointer-events:none}
+.brand{position:absolute;top:34px;left:36px;right:28px;display:flex;align-items:center;gap:12px;z-index:1}
+.brandSymbol{display:grid;place-items:center;width:41px;height:41px;border:1px solid #c3ccff42;border-radius:13px;background:#ffffff0c;color:#f5f6ff;font-size:24px}
+.brand h1{margin:0 0 5px;font-size:17px;font-weight:650;letter-spacing:.2px;color:inherit}
+.brand p{margin:0;color:#bcc5df;font-size:11px;letter-spacing:1px}
+.heroCopy{position:relative;z-index:1;padding:148px 36px 280px;pointer-events:none}
+.eyebrow{font-size:12px;color:#cbd3ee;letter-spacing:2px}
+.productTitle{margin:22px 0 20px;color:#fafaff;font-size:clamp(42px,4.1vw,68px);font-weight:650;line-height:1.25;letter-spacing:-2px}
+.productTitle>span{color:#d4dcff}
+.productDescription{margin:0;color:#ced6ef;font-size:15px;line-height:1.9}
+.heroFoot{position:absolute;left:36px;right:36px;bottom:30px;display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;font-size:12px;color:#e5eaff;z-index:1}
+.heroFoot>span{display:inline-flex;align-items:center;gap:10px}
+.heroFoot>span:last-child{font-size:11px;color:#c4cfe9}
+.loginCard{align-self:center;justify-self:center;width:100%;max-width:460px;min-width:0;padding:44px 42px}
+.loginEyebrow{display:flex;align-items:center;gap:8px;color:var(--edu-primary);font-size:12px;letter-spacing:1.5px;margin:0 0 16px}
+.loginEyebrow>span{height:6px;width:6px;background:var(--edu-primary);border-radius:50%}
+.loginCard h2{color:var(--edu-ink);font-size:34px;line-height:1.4;font-weight:650;margin:0 0 10px;letter-spacing:-1px}
+.loginDescription{font-size:13px;color:var(--edu-muted);line-height:1.85;margin:0 0 32px}
+.error{margin-bottom:18px}.error :global(.ant-alert){font-size:13px}
+.form :global(.ant-form-item){margin-bottom:22px}
+.form :global(.ant-form-item-label){padding-bottom:8px}
+.form :global(.ant-form-item-label>label){font-size:13px;font-weight:550;color:var(--edu-ink)}
+.form :global(.ant-input-affix-wrapper),.form :global(.ant-select-selector){min-height:48px;background:var(--edu-canvas);border-color:var(--edu-border);border-radius:10px}
+.form :global(.ant-input-affix-wrapper){padding-inline:14px;box-shadow:none;transition:border-color 220ms,box-shadow 220ms}
+.form :global(.ant-select){min-height:48px}
+.form :global(.ant-input-affix-wrapper input){font-size:15px;background:transparent;min-width:0}
+.form :global(.ant-input-prefix){color:var(--edu-muted);margin-inline-end:10px;font-size:16px}
+.form :global(.ant-input-affix-wrapper:focus-within){background:var(--edu-surface);border-color:var(--edu-primary);box-shadow:0 0 0 3px var(--edu-primary-soft)}
+.passwordInput :global(button.ant-input-password-icon){display:grid;place-items:center;border:0;background:transparent;padding:4px;border-radius:4px;color:var(--edu-muted);cursor:pointer;font-size:17px;line-height:1}
+.passwordInput :global(button.ant-input-password-icon:focus-visible){outline:2px solid var(--edu-primary);outline-offset:3px}
+.passwordInput :global(button.ant-input-password-icon:disabled){cursor:not-allowed;opacity:.5}
+.loginButton{height:48px;font-size:15px;font-weight:600;margin-top:4px;border-radius:10px;box-shadow:0 5px 14px color-mix(in srgb,var(--edu-primary) 16%,transparent)}
+.loginButton:focus-visible{outline:2px solid var(--edu-primary);outline-offset:4px}
+.accountNote{display:flex;gap:8px;align-items:start;padding-top:20px;margin-top:22px;border-top:1px solid var(--edu-border)}
+.accountNote :global(.anticon){font-size:15px;color:var(--edu-primary);margin-top:3px}
+.accountNote p{font-size:11px;line-height:1.85;color:var(--edu-muted);margin:0}
+.footer{margin-top:26px;color:var(--edu-muted);font-size:10px;line-height:1.6}
+@keyframes artwork-arrive{from{opacity:.35;transform:scale(1.035)}to{opacity:1;transform:scale(1)}}
+@media(min-width:1700px){.heroCopy{padding-top:190px}.loginCard{max-width:500px;padding:56px}.productTitle{font-size:74px}}
+@media(max-width:1100px){.content{grid-template-columns:minmax(0,1.15fr) minmax(350px,1fr)}.heroCopy{padding-inline:28px}.brand{left:28px}.heroFoot{left:28px;right:28px}.productTitle{font-size:43px}.loginCard{padding:36px 30px}}
+@media(max-width:840px){.page{padding:10px}.shell{min-height:calc(100dvh - 20px);max-width:600px}.content{display:flex;flex-direction:column;min-height:calc(100dvh - 20px);border-radius:20px}.introduction{flex:none;height:210px}.brand{top:20px;left:22px}.brandSymbol{height:32px;width:32px;font-size:19px;border-radius:10px}.brand h1{font-size:14px}.brand p{font-size:10px}.heroCopy{padding:84px 22px 18px}.eyebrow,.productDescription,.heroFoot{display:none}.productTitle{margin:0;font-size:31px;line-height:1.3;letter-spacing:-1px}.heroArtwork img{object-position:62% 57%}.heroShade{background:linear-gradient(90deg,#080e24bb,transparent 90%)}.loginCard{max-width:440px;padding:29px 26px 25px;align-self:center}.loginCard h2{font-size:28px}.loginEyebrow{margin-bottom:9px}.loginDescription{margin-bottom:24px}.form :global(.ant-form-item){margin-bottom:18px}.footer{margin-top:19px}}
+@media(prefers-reduced-motion:reduce){.heroArtwork{animation:none}.form :global(.ant-input-affix-wrapper),.loginButton{transition:none}}

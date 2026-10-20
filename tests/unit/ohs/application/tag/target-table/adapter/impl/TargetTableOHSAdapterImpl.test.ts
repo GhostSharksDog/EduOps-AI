@@ -1,3 +1,5 @@
+import {useCompanyUnitFixture} from '@/tests/helpers/company-unit-fixture';
+const companyId=useCompanyUnitFixture();
 /**
  * TargetTableOHSAdapterImpl 测试
  * 验证创建/更新命令的 JSON 解析、列表查询及实体到 VO 的转换

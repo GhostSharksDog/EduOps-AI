@@ -1,3 +1,5 @@
+import {useCompanyUnitFixture} from '@/tests/helpers/company-unit-fixture';
+const companyId=useCompanyUnitFixture();
 import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
 // 测试 TargetTable 应用层实现
 import { TargetTableApplicationServiceImpl } from '@/modules/tag/services/target-table/TargetTableApplicationServiceImpl';

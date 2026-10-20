@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import { NextRequest, NextResponse } from 'next/server';
 import {riskTagRouteAuth as authMiddleware} from '@/modules/tag/server';
 import {getTagActivationApplicationService} from '@/modules/tag/server';
@@ -13,7 +14,7 @@ import {MESSAGES} from '@/shared/messages/index';
  * 
  * 恢复标签 - 恢复物化视图刷新
  */
-export async function POST(
+async function POSTHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -38,3 +39,5 @@ export async function POST(
     return handleAPIError(error);
   }
 }
+
+export const POST=withCompanyRoute(POSTHandler);

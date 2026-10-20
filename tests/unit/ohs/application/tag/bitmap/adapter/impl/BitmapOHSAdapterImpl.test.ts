@@ -1,3 +1,5 @@
+import {useCompanyUnitFixture} from '@/tests/helpers/company-unit-fixture';
+const companyId=useCompanyUnitFixture();
 /**
  * BitmapOHSAdapterImpl 测试
  * 验证创建、状态更新、列表查询、以及 VO/DetailVO 映射
@@ -48,7 +50,7 @@ describe('BitmapOHSAdapterImpl', () => {
       expect(dto.entityTypeId).toBe('11111111-1111-1111-1111-111111111111');
       expect(dto.status).toBe('ACTIVE');
       expect(dto.search).toBe('test');
-      expect((dto as any).tenantFilter).toEqual({ tenantId: 'tenant-1' });
+      expect((dto as any).tenantFilter).toEqual({ tenantId: companyId });
     });
   });
 

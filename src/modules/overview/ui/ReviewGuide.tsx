@@ -14,7 +14,7 @@ export function rememberReviewRecord(kind:RecordKind,id:string,selection?:Analys
  try{const name=key(s),old=JSON.parse(localStorage.getItem(name)??'{}'),url=new URL(window.location.href);if(old[kind]===id&&url.searchParams.get(kind)===id)return;
   const clear=kind==='runId'?['proposalId','snapshotId','reportId','taskId']:kind==='proposalId'?[...(old.proposalId&&old.proposalId!==id?['runId']:[]),'snapshotId','reportId','taskId']:kind==='snapshotId'||kind==='reportId'?['taskId']:[];
   clear.forEach(k=>{delete old[k];url.searchParams.delete(k);});old[kind]=id;localStorage.setItem(name,JSON.stringify(old));if(kind!=='analysis')url.searchParams.set(kind,id);
-  const scopeUrl=new URL(analysisHref(url.pathname,s),window.location.origin);url.searchParams.set('datasetId',s.datasetId);url.searchParams.set('scope',scopeUrl.searchParams.get('scope')!);window.history.replaceState(window.history.state,'',url);window.dispatchEvent(new Event('education-review-progress'));
+  const scopeUrl=new URL(analysisHref(url.pathname,s),window.location.origin);url.searchParams.set('datasetId',s.datasetId);url.searchParams.set('scope',scopeUrl.searchParams.get('scope')!);window.history.replaceState(null,'',url);window.dispatchEvent(new Event('education-review-progress'));
  }catch{/* 本地存储不可用时仍可通过保存对象继续。 */}
 }
 export default function ReviewGuide({selection}:{selection?:AnalysisSelection|null}){

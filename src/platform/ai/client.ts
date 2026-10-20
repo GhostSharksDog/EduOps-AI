@@ -18,12 +18,18 @@ export class ModelServiceError extends Error {
  constructor(message:string,public readonly code:string,public readonly diagnostics?:{httpStatus?:number;networkReason?:string}){super(message);this.name='ModelServiceError';}
 }
 function safeNetworkReason(error:unknown):string{
- const allowed=new Set(['ENOTFOUND','EAI_AGAIN','ECONNREFUSED','ECONNRESET','ETIMEDOUT','ERR_INVALID_URL','ERR_TLS_CERT_ALTNAME_INVALID','UNABLE_TO_VERIFY_LEAF_SIGNATURE','CERT_HAS_EXPIRED','DEPTH_ZERO_SELF_SIGNED_CERT','UND_ERR_CONNECT_TIMEOUT']);
- let current=error;
- for(let depth=0;depth<4&&current&&typeof current==='object';depth++){
-  const item=current as {code?:unknown;cause?:unknown};
+ const allowed=new Set(['ENOTFOUND','EAI_AGAIN','ECONNREFUSED','ECONNRESET','ETIMEDOUT','ENETUNREACH','EHOSTUNREACH','EPERM','EACCES','ERR_INVALID_URL','ERR_TLS_CERT_ALTNAME_INVALID','UNABLE_TO_VERIFY_LEAF_SIGNATURE','CERT_HAS_EXPIRED','DEPTH_ZERO_SELF_SIGNED_CERT','UND_ERR_CONNECT_TIMEOUT','UND_ERR_SOCKET']);
+ // Node多地址连接错误可能藏在AggregateError.errors；只提取白名单错误码。
+ const pending:Array<{value:unknown;depth:number}>=[{value:error,depth:0}],seen=new Set<object>();
+ for(let index=0;index<pending.length&&index<64;index++){
+  const {value,depth}=pending[index];
+  if(!value||typeof value!=='object'||seen.has(value))continue;
+  seen.add(value);const item=value as {code?:unknown;cause?:unknown;errors?:unknown};
   if(typeof item.code==='string'&&allowed.has(item.code))return item.code;
-  current=item.cause;
+  if(depth<4){
+   pending.push({value:item.cause,depth:depth+1});
+   if(Array.isArray(item.errors))for(const child of item.errors.slice(0,16))pending.push({value:child,depth:depth+1});
+  }
  }
  return 'UNKNOWN';
 }
@@ -71,7 +77,12 @@ export class CloudModelClient {
   try{
    const response=await fetch(this.endpoint.baseUrl.replace(/\/+$/,'')+'/'+resource,{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+this.endpoint.apiKey},body:JSON.stringify(payload),signal});
    if(!response.ok)throw new ModelServiceError('模型服务调用失败，HTTP '+response.status,'MODEL_HTTP',{httpStatus:response.status});
-   try{return await response.json();}catch{throw new ModelServiceError('模型服务未返回有效JSON','INVALID_JSON');}
+   try{return await response.json();}catch(error){
+    // 供应商可能先返回响应头而迟迟未完成正文；正文读取取消仍应归类为超时。
+    if(signal.aborted)throw new ModelServiceError('模型调用超时或已取消','MODEL_TIMEOUT');
+    if(error instanceof SyntaxError)throw new ModelServiceError('模型服务未返回有效JSON','INVALID_JSON');
+    throw error;
+   }
   }catch(error){
    if(error instanceof ModelServiceError)throw error;
    if(signal.aborted)throw new ModelServiceError('模型调用超时或已取消','MODEL_TIMEOUT');

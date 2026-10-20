@@ -5,6 +5,9 @@ async function main(){
  if(!process.argv.includes('--connect')){console.log('未联网；真实模型业务校验须显式--connect。');return;}
  const guard=()=>{const u=new URL(process.env.DATABASE_URL??'');if(u.hostname!=='127.0.0.1'||u.port!=='25432'||u.pathname!=='/education_cleanup_test')throw Error('TEST_DATABASE_GUARD');};guard();
  const {config}=await import('dotenv');config({path:'.env.local',quiet:true});config({quiet:true});guard();
+ Object.assign(process.env,{COMPANY_REGISTRY_JSON:'',DEFAULT_COMPANY_CODE:'main',CLICKHOUSE_HOST:'127.0.0.1',CLICKHOUSE_PORT:'28123',CLICKHOUSE_USER:'default',CLICKHOUSE_PASSWORD:'test_password',CLICKHOUSE_DATABASE:'education_cleanup_test',SYSTEM_USER_ID:'6f40f555-5f1b-4d1f-807c-b209e817bfdd'});
+ const {runStandaloneTestCompany}=await import('../helpers/standalone-company');
+ return runStandaloneTestCompany(async()=>{
  const chat=new URL(process.env.CHAT_API_BASE_URL??''),embedding=new URL(process.env.EMBEDDING_API_BASE_URL??'');
  if(chat.protocol!=='https:'||chat.hostname!=='api.deepseek.com'||embedding.protocol!=='https:'||!['dashscope.aliyuncs.com','dashscope-intl.aliyuncs.com'].includes(embedding.hostname))throw Error('CLOUD_ENDPOINT_GUARD');
  const {db}=await import('../../src/platform/database'),{educationData}=await import('../../src/modules/education/composition'),{knowledgeService}=await import('../../src/modules/knowledge/composition');
@@ -25,5 +28,6 @@ async function main(){
  }catch{process.exitCode=1;}finally{
   await db.end();const out=process.env.TEST_ARTIFACT_DIR??'tests/artifacts/reviewer-upgrade-qa';await mkdir(out,{recursive:true});await writeFile(out+'/cloud-business.json',JSON.stringify({...result,testedAt:new Date().toISOString(),payload:'模拟聚合事实及通用口径，不含成员明细',database:'education_cleanup_test'},null,2)+'\n');console.log(JSON.stringify(result));
  }
+ });
 }
 main().catch(error=>{console.error(JSON.stringify({status:'precondition_failed',name:error?.name,code:/^[A-Z_]+$/.test(error?.code??error?.message??'')?(error.code??error.message):'PRECONDITION_ERROR'}));process.exitCode=1;});

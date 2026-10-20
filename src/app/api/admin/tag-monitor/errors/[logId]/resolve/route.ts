@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import { NextRequest, NextResponse } from 'next/server';
 import {getTagRefreshMonitorService} from '@/modules/tag/server';
 import { log } from '@/platform/logger';
@@ -10,7 +11,7 @@ import {MESSAGES} from '@/shared/messages/index';
  *
  * 标记刷新错误为已解决
  */
-export async function POST(
+async function POSTHandler(
   request: NextRequest,
   { params }: { params: Promise<{ logId: string }> }
 ) {
@@ -34,3 +35,5 @@ export async function POST(
     return handleAPIError(error);
   }
 }
+
+export const POST=withCompanyRoute(POSTHandler);

@@ -1,2 +1,1 @@
-export {};
-export {default as RiskProfilesPage} from './ui/RiskProfilesPage';
+export {default as RiskProfilesPage,RiskProfilesWorkspace,RiskProfilePanel} from './ui/RiskProfilesPage';

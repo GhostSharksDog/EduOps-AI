@@ -25,6 +25,7 @@ export default defineConfig({
     // Fork pool for database tests to avoid connection conflicts
     pool: 'forks',
     maxWorkers: 1,  // Run tests sequentially to avoid DB lock conflicts
+    fileParallelism:false,
     coverage: {
       provider: 'v8',
       include: ['src/**/*'],

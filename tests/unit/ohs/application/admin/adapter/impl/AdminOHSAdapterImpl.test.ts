@@ -1,3 +1,5 @@
+import {useCompanyUnitFixture} from '@/tests/helpers/company-unit-fixture';
+const companyId=useCompanyUnitFixture();
 /**
  * AdminOHSAdapterImpl 测试
  * 验证 fromRequestToXxxCommand 与 fromAuditLogXxxVO 的映射及边界情形
@@ -54,7 +56,7 @@ describe('AdminOHSAdapterImpl', () => {
       expect(q.actorId).toBe('abc');
       expect(q.startTime?.toISOString()).toBe('2020-01-01T00:00:00.000Z');
       expect(q.endTime?.toISOString()).toBe('2020-01-02T00:00:00.000Z');
-      expect(q.tenantFilter).toEqual({ tenantId: 'tenant-1' } as any);
+      expect(q.tenantFilter).toEqual({ tenantId: companyId } as any);
     });
   });
 

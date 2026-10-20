@@ -1,4 +1,7 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {NextRequest,NextResponse} from 'next/server';
 import {agentApi} from '@/modules/agent/server';
 import {decisionService} from '@/modules/decision/server';
-export async function GET(request:NextRequest){return agentApi(request,async actor=>NextResponse.json({status:'ready',data:await decisionService.recommendations(actor)}));}
+async function GETHandler(request:NextRequest){return agentApi(request,async actor=>NextResponse.json({status:'ready',data:await decisionService.recommendations(actor)}));}
+
+export const GET=withCompanyRoute(GETHandler);

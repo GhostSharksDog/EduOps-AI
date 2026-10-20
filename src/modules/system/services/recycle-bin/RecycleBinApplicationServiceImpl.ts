@@ -1,5 +1,4 @@
 import {NotFoundError} from '@/platform/api-error-handler';
-import {config} from '@/platform/config/index';
 import {queryRows,queryOne,execute,transaction,type DbClient} from '@/platform/database';
 import type {RecycleBinApplicationService} from '@/modules/system/services/recycle-bin/RecycleBinApplicationService';
 import type {ListRecycleBinItemsQuery} from '@/modules/system/services/recycle-bin/queries/index';
@@ -15,7 +14,7 @@ const tables:Record<RecycleBinItemType,{table:string;name:string;description:str
  MODEL_COLUMN:{table:'model_column',name:'display_name',description:'description'},BITMAP_TABLE:{table:'bitmap_table',name:'name',description:'description'}
 };
 function definition(type:string){const value=tables[type as RecycleBinItemType];if(!value)throw new Error('不支持的回收站类型');return value;}
-function ownership(tenantId?:string){return tenantId?[tenantId,config.system.userId]:null;}
+function ownership(tenantId?:string){return tenantId?[tenantId]:null;}
 
 export class RecycleBinApplicationServiceImpl implements RecycleBinApplicationService {
  async listRecycleBinItems(query:ListRecycleBinItemsQuery):Promise<RecycleBinItemListVO>{
@@ -25,7 +24,7 @@ export class RecycleBinApplicationServiceImpl implements RecycleBinApplicationSe
     delete_time AS "deletedAt",deleted_by AS "deletedBy",owned_by,to_jsonb(t)-'password' AS "originalData" FROM public.${def.table} t WHERE is_deleted=true`;});
   const conditions=['true'],values:unknown[]=[];
   const tenant=ownership(query.tenantFilter?.tenantId);
-  if(tenant){values.push(...tenant);conditions.push('(owned_by=$1::uuid OR owned_by=$2::uuid)');}
+  if(tenant){values.push(...tenant);conditions.push('owned_by=$1::uuid');}
   if(query.keyword){if(query.keyword.length>100)throw new Error('关键词过长');values.push(`%${query.keyword.replace(/[%_\\]/g,'\\$&')}%`);conditions.push(`(name ILIKE $${values.length} OR description ILIKE $${values.length})`);}
   for(const [value,op] of [[query.deletedFrom,'>='],[query.deletedTo,'<=']] as const){if(value){if(!/^\d{4}-\d{2}-\d{2}/.test(value)||!Number.isFinite(new Date(value).getTime()))throw new Error('日期格式无效');values.push(value);conditions.push(`"deletedAt"${op}$${values.length}::timestamp`);}}
   const base=`FROM (${parts.join(' UNION ALL ')}) combined WHERE ${conditions.join(' AND ')}`;

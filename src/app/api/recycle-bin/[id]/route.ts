@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {authMiddleware} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {z} from 'zod';
@@ -14,7 +15,7 @@ import { handleAPIError } from '@/platform/api-error-handler';
  * @response restoreRecycleBinItemResponseSchema
  * @openapi
  */
-export async function DELETE(
+async function DELETEHandler(
     request: NextRequest,
     {params}: { params: Promise<{ id: string }> }
 ) {
@@ -40,3 +41,5 @@ export async function DELETE(
         return handleAPIError(error);
     }
 }
+
+export const DELETE=withCompanyRoute(DELETEHandler);

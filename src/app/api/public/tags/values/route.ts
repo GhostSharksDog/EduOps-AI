@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentTenantId } from '@/platform/get-current-tenant';
 import { handleAPIError, ValidationError } from '@/platform/api-error-handler';
@@ -15,11 +16,8 @@ const querySchema = z.strictObject({
     versionId: z.string().uuid().optional(),
 });
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
     const tenantId = getCurrentTenantId(request);
-    if (!request.headers.has('x-tenant-id') || !isValidUUID(tenantId)) {
-        return NextResponse.json({error: '缺少或无效的 x-tenant-id 请求头'}, {status: 400});
-    }
 
     try {
         const queryParams = Object.fromEntries(request.nextUrl.searchParams);
@@ -98,3 +96,5 @@ export async function GET(request: NextRequest) {
         return handleAPIError(error);
     }
 }
+
+export const GET=withCompanyRoute(GETHandler);

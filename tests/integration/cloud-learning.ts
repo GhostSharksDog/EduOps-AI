@@ -25,13 +25,16 @@ async function main(){
  if(!process.argv.includes('--connect')){console.log(JSON.stringify({status:'not_executed',configurationLoaded:false,networkRequests:0,databaseWrites:0}));return;}
  const result:Verification={status:'failed',stage:'configuration'},started=performance.now();
  let db:(typeof import('../../src/platform/database'))['db']|undefined;
- try{
   // dotenv只填临时对象，仅复制模型变量；真实数据库配置不会进入连接池。
   const {config:loadEnv}=await import('dotenv'),modelEnvironment:Record<string,string>={};
   loadEnv({path:'.env.local',quiet:true,processEnv:modelEnvironment});loadEnv({quiet:true,processEnv:modelEnvironment});
   for(const key of ['CHAT_API_BASE_URL','CHAT_API_KEY','CHAT_MODEL','EMBEDDING_API_BASE_URL','EMBEDDING_API_KEY','EMBEDDING_MODEL'])if(modelEnvironment[key])process.env[key]=modelEnvironment[key];
   Object.assign(process.env,{DATABASE_URL:testDatabase,CLICKHOUSE_HOST:'127.0.0.1',CLICKHOUSE_PORT:'28123',CLICKHOUSE_USER:'default',CLICKHOUSE_PASSWORD:'test_password',CLICKHOUSE_DATABASE:'education_cleanup_test',CLICKHOUSE_CLUSTER:'',CLICKHOUSE_REPLICATED_DB:'false',JWT_SECRET:'public_learning_cloud_test_only_secret_long_enough',REDIS_URL:''});
   guard();
+ Object.assign(process.env,{COMPANY_REGISTRY_JSON:'',DEFAULT_COMPANY_CODE:'main',CLICKHOUSE_HOST:'127.0.0.1',CLICKHOUSE_PORT:'28123',CLICKHOUSE_USER:'default',CLICKHOUSE_PASSWORD:'test_password',CLICKHOUSE_DATABASE:'education_cleanup_test',SYSTEM_USER_ID:'6f40f555-5f1b-4d1f-807c-b209e817bfdd'});
+ const {runStandaloneTestCompany}=await import('../helpers/standalone-company');
+ return runStandaloneTestCompany(async()=>{
+ try{
   check(['CHAT_API_BASE_URL','CHAT_API_KEY','CHAT_MODEL','EMBEDDING_API_BASE_URL','EMBEDDING_API_KEY','EMBEDDING_MODEL'].every(key=>Boolean(process.env[key])),'MODEL_CONFIGURATION_INCOMPLETE');
   result.stage='endpoint_guard';
   const chat=new URL(process.env.CHAT_API_BASE_URL??''),embedding=new URL(process.env.EMBEDDING_API_BASE_URL??'');
@@ -83,5 +86,6 @@ async function main(){
   if(db)await db.end();result.durationSeconds=Math.round((performance.now()-started)/1000);
   const output=path.resolve(process.env.TEST_ARTIFACT_DIR??defaultOutput);await mkdir(output,{recursive:true});await writeFile(path.join(output,'cloud-learning.json'),JSON.stringify({...result,testedAt:new Date().toISOString(),database:'education_cleanup_test',payload:'匿名公开学习聚合事实和通用口径；不含成员明细',scope:{courseKeys:['AAA:2013J'],relativeDayStart:-25,relativeDayEnd:50}},null,2)+'\n');console.log(JSON.stringify(result,null,2));
  }
+ });
 }
 main().catch(error=>{console.error(JSON.stringify({status:'precondition_failed',stage:'initialization',errorCode:safeCode(error)}));process.exitCode=1;});

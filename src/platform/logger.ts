@@ -44,6 +44,7 @@ function getServerLogger(): pino.Logger {
             return {
                 requestId: ctx.requestId,
                 userId: ctx.userId,
+                companyCode:ctx.companyCode,
                 path: ctx.path,
                 method: ctx.method,
             };

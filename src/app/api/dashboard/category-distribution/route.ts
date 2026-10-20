@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { log } from '@/platform/logger';
@@ -11,7 +12,7 @@ const querySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(10),
 });
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   const authError = await authMiddleware(request);
   if (authError) return authError;
 
@@ -59,3 +60,5 @@ export async function GET(request: NextRequest) {
     return handleAPIError(error);
   }
 }
+
+export const GET=withCompanyRoute(GETHandler);

@@ -1,0 +1,53 @@
+.dashboard{max-width:1880px;margin:0 auto;min-width:0}
+.canvas{gap:10px;max-width:1880px}
+.toolbar{min-height:48px;align-items:center!important}
+.dataControl{min-width:160px;width:260px;max-width:290px;flex:none}
+.dataControl :global(.ant-select){font-size:12px;width:100%!important}
+.metricToolbar{display:flex;gap:4px;align-items:center;min-height:24px;flex:none}
+.metricToolbar>:first-child{margin-right:auto;font-size:12px}
+.metricStrip{gap:0!important;flex:none;border:1px solid var(--edu-border);border-radius:18px;background:var(--edu-surface);overflow:hidden}
+.canvas .metricStrip :global(.metric-card){min-height:96px;padding:0;border:0;border-right:1px solid var(--edu-border);border-radius:0;box-shadow:none;cursor:default;background:transparent;color:var(--edu-ink);overflow:visible}
+.canvas .metricStrip :global(.metric-card):nth-child(4n){border-right:0}
+.canvas .metricStrip :global(.metric-card):nth-child(n+5){border-top:1px solid var(--edu-border)}
+.canvas .metricStrip :global(.metric-card)::before{display:none}
+.canvas .metricStrip :global(.metric-card):hover{transform:none}
+.metricSelect{display:flex;flex-direction:column;width:100%;height:100%;padding:13px 20px;background:none;border:0;color:inherit;text-align:left;cursor:pointer;min-width:0;position:relative}
+.metricSelect::after{content:'';position:absolute;bottom:0;left:20px;right:20px;height:3px;background:var(--edu-primary);transform:scaleX(0);transform-origin:left;transition:transform .2s}
+.metricSelect :global(.metric-label){font-size:12px;line-height:20px;color:var(--edu-muted)}
+.metricSelect :global(.metric-number){display:block;font-size:29px;margin:4px 0 3px;line-height:1.12;font-weight:650;letter-spacing:-.8px}
+.metricSelect :global(.metric-number span){font-size:12px;margin-left:4px;color:var(--edu-muted);letter-spacing:0}
+.metricSelect :global(.metric-change){font-size:11px;line-height:17px;min-height:17px;color:var(--edu-muted)}
+.metricEvidence:global(.ant-btn){position:absolute;right:7px;top:7px;font-size:10px;padding:2px 5px;height:22px;color:var(--edu-muted);opacity:.8}
+.canvas .metricStrip :global(.metric-card[data-selected=true]){background:var(--edu-primary-soft)}
+.canvas .metricStrip :global(.metric-card[data-selected=true]) .metricSelect::after{transform:scaleX(1)}
+.canvas .metricStrip :global(.metric-card[data-selected=true]) :global(.metric-number){color:var(--edu-primary)}
+.analysisLayout{min-height:300px;gap:20px}
+.analysisPane{min-height:300px;border-radius:20px!important;box-shadow:var(--edu-shadow);border-color:var(--edu-border)}
+.analysisBody{display:flex;flex-direction:column;padding:0 20px 12px!important;min-height:0}
+.analysisHeadline{display:flex;justify-content:space-between;gap:20px;align-items:center;margin:0 -20px;padding:20px 25px 19px;position:relative;isolation:isolate;color:var(--edu-art-ink);background:var(--edu-art-background);flex:none;overflow:hidden}
+.analysisHeadline::before{content:'';position:absolute;z-index:-1;inset:0;background:radial-gradient(ellipse at 95% 0%,color-mix(in srgb,var(--edu-agent) 25%,transparent),transparent 60%),radial-gradient(ellipse at 65% 120%,color-mix(in srgb,var(--edu-accent) 20%,transparent),transparent 55%)}
+.analysisHeadline::after{content:'';position:absolute;z-index:-1;width:210px;height:210px;right:13%;top:-108px;border:1px solid color-mix(in srgb,var(--edu-art-ink) 8%,transparent);border-radius:50%;box-shadow:0 0 0 28px color-mix(in srgb,var(--edu-art-ink) 3%,transparent),0 0 0 56px color-mix(in srgb,var(--edu-art-ink) 2%,transparent);pointer-events:none}
+.focusMetric{min-width:0;flex:1}.focusEyebrow{display:block;font-size:10px;color:color-mix(in srgb,var(--edu-art-ink) 70%,transparent);letter-spacing:2px;margin-bottom:5px}.focusMetric h2{font-size:15px;line-height:1.6;margin:0;font-weight:500;color:inherit}
+.focusValue{font-size:45px;line-height:1.15;font-weight:600;letter-spacing:-1.9px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.focusValue>span{font-size:15px;color:color-mix(in srgb,var(--edu-art-ink) 70%,transparent);letter-spacing:0;font-weight:400;margin-left:7px}
+.focusContext{display:flex;align-items:flex-end;flex-direction:column;gap:10px;min-width:0;position:relative;z-index:1}.focusContext>span{font-size:11px;color:color-mix(in srgb,var(--edu-art-ink) 70%,transparent);display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.focusContext strong{font-size:13px;color:var(--edu-art-ink);font-weight:500;font-variant-numeric:tabular-nums}.focusContext>button{font:inherit;font-size:11px;background:none;border:0;padding:0;color:color-mix(in srgb,var(--edu-art-ink) 85%,transparent);cursor:pointer;display:flex;align-items:center;gap:6px}.focusContext>button:hover{color:var(--edu-art-ink)}.focusContext>button:focus-visible{outline:2px solid var(--edu-art-ink);outline-offset:5px;border-radius:3px}
+.analysisBody>.analysisTabs{flex:none;margin-bottom:4px;margin-top:6px}
+.analysisBody :global(.ant-tabs-nav){margin-bottom:0}.analysisTabs :global(.ant-tabs-tab){font-size:12px;padding-block:10px!important}
+.chartStage{flex:1;min-height:180px;position:relative}
+.chartStage :global(.business-chart){height:100%}
+.chartNote{font-size:12px;line-height:1.7;margin-top:7px}
+.inspector{min-height:0;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+.inspector>header{padding:8px 0 14px;border-color:var(--edu-border);font-size:14px}
+.inspector>div{padding:0!important}.inspector>footer{padding:11px 0!important;background:transparent!important;font-size:11px}
+.priorities{display:flex;flex-direction:column}
+.priority{display:grid;grid-template-columns:35px minmax(0,1fr);gap:12px;padding:17px 0;border-bottom:1px solid var(--edu-border);min-width:0}
+.priorityNumber{font-size:25px;line-height:1.15;letter-spacing:-1.1px;color:color-mix(in srgb,var(--edu-muted) 60%,transparent);font-variant-numeric:tabular-nums;font-weight:400;padding-top:2px}
+.priorityContent{min-width:0}.priorityContent>:global(.ant-typography){margin:5px 0!important;font-size:13px;line-height:1.65}.priorityContent>:global(.ant-typography-secondary){font-size:11px}.priority :global(.ant-tag){font-size:10px;line-height:17px}.priorityKind{font-size:10px;line-height:18px;font-weight:600;color:var(--edu-agent)}.priorityKind[data-kind=预警]{color:var(--edu-warning)}
+.priorityAction{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--edu-primary);margin-top:6px}.priorityAction:hover{text-decoration:underline}.priorityAction:focus-visible{outline:2px solid var(--edu-primary);outline-offset:3px}
+.savedSection{padding:16px 0 0}.savedSection>:global(.ant-typography){font-size:12px;display:block;margin-bottom:7px}.savedSection>p:global(.ant-typography){font-size:11px}
+.savedRow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;color:var(--edu-ink);font-size:11px;line-height:1.65;min-width:0}.savedRow>span:first-child{min-width:0;overflow-wrap:anywhere}.savedRow>strong{flex:none;font-size:11px;color:var(--edu-primary)}.savedRow small{color:var(--edu-warning);font-size:10px}
+@media(min-width:1700px){.analysisHeadline{padding-block:26px}.focusValue{font-size:55px}.canvas .metricStrip :global(.metric-card){min-height:105px}.metricSelect :global(.metric-number){font-size:33px}}
+@media(max-width:1400px){.dataControl{width:230px;max-width:260px}.metricSelect{padding-inline:16px}.metricSelect :global(.metric-change){font-size:10px}.analysisLayout{gap:16px}.analysisHeadline{padding:18px 20px}.focusValue{font-size:41px}}
+@media(max-width:1199px){.canvas[data-workspace][data-fit]{height:auto;min-height:0}.analysisLayout{grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr);min-height:460px}.analysisLayout>.analysisPane{min-height:460px}.inspector{max-height:630px}.chartStage{min-height:250px}.toolbar{flex-wrap:wrap}.dataControl{width:270px}.toolbar :global(.scope-inline){flex-basis:100%}.metricSelect{padding:14px}.metricSelect :global(.metric-number){font-size:27px}}
+@media(max-width:767px){.canvas[data-workspace][data-fit]{height:auto;min-height:0}.toolbar{gap:8px!important}.dataControl{width:100%;max-width:none;flex-basis:100%}.analysisLayout{grid-template-columns:minmax(0,1fr);gap:18px}.analysisLayout>.analysisPane{min-height:430px;border-radius:16px!important}.analysisHeadline{margin-inline:-13px;padding:18px 16px;gap:10px}.focusMetric h2{font-size:13px}.focusValue{font-size:34px}.focusContext{gap:9px}.focusContext>span{max-width:145px;font-size:10px;gap:3px 6px}.focusContext strong{font-size:12px}.focusContext :global(.ant-select){width:128px!important}.chartStage{min-height:240px}.inspector{max-height:none;min-height:0}.metricStrip{gap:0!important;border-radius:14px}.canvas .metricStrip :global(.metric-card){min-height:100px}.canvas .metricStrip :global(.metric-card):nth-child(2n){border-right:0}.canvas .metricStrip :global(.metric-card):nth-child(n+3){border-top:1px solid var(--edu-border)}.metricSelect{padding:16px 12px 12px}.metricSelect :global(.metric-number){font-size:28px;margin-block:7px}.metricSelect :global(.metric-change){padding-right:0;font-size:10px}.metricSelect::after{left:12px;right:12px}.metricEvidence:global(.ant-btn){top:2px;right:4px;padding:1px 3px;font-size:9px;height:21px}.metricSelect :global(.metric-label){padding-top:6px}.metricToolbar{margin-top:2px}.analysisBody{padding-inline:13px!important}.priority{padding-block:15px}.savedSection{padding-top:13px}}
+@media(max-width:360px){.metricStrip{grid-template-columns:repeat(2,minmax(0,1fr))!important}.metricSelect :global(.metric-number){font-size:24px}.metricSelect :global(.metric-change){font-size:9px}.focusValue{font-size:30px}.focusContext :global(.ant-select){width:117px!important}}
+@media(prefers-reduced-motion:reduce){.metricSelect::after{transition:none}}

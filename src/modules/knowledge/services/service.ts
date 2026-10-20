@@ -31,7 +31,7 @@ export class KnowledgeApplicationService {
  }
  async list(organizationId:string):Promise<KnowledgeSource[]>{return (await this.repository.list(organizationId)).map(s=>sourceVO(s,this.embeddings.configuration().fingerprint));}
  async get(id:string,organizationId:string):Promise<KnowledgeSource>{const source=await this.repository.get(id,organizationId);if(!source)throw new WorkflowError('知识版本不存在或无权访问',404);return sourceVO(source,this.embeddings.configuration().fingerprint);}
- async create(input:CreateKnowledgeSourceDTO,organizationId:string,actorId:string):Promise<KnowledgeSource>{
+ async create(input:CreateKnowledgeSourceDTO,organizationId:string,actorId:string,operationKey?:string):Promise<KnowledgeSource>{
   const {reportId,...material}=input;
   if(reportId){
    const {reportService}=await import('@/modules/report/server');
@@ -40,7 +40,8 @@ export class KnowledgeApplicationService {
    material.period={startDate:report.snapshot.scope.startDate,endDate:report.snapshot.scope.endDate};material.dataCutoff=report.snapshot.scope.dataCutoff;
    material.evidence=[{id:'report/'+report.id,kind:'metric',sourceId:report.id,version:contentHash(JSON.stringify(report.snapshot)),summary:'已冻结经营报告：'+material.period.startDate+' 至 '+material.period.endDate,scope:report.snapshot.scope,updatedAt:report.completedAt??report.createdAt}];
   }
-  return sourceVO(await this.repository.create(material,organizationId,actorId,revisionHash(material.title,material.content)));
+  const fingerprint=revisionHash(material.title,material.content);
+  return sourceVO(await (operationKey?this.repository.create(material,organizationId,actorId,fingerprint,operationKey):this.repository.create(material,organizationId,actorId,fingerprint)));
  }
  async revise(id:string,organizationId:string,input:ReviseKnowledgeSourceDTO):Promise<KnowledgeSource>{return sourceVO(await this.repository.revise(id,organizationId,{...input,contentHash:revisionHash(input.title,input.content)}));}
  async approveAndIndex(id:string,organizationId:string,actorId:string,input:ApproveKnowledgeSourceDTO):Promise<CapabilityResult<KnowledgeSource>>{

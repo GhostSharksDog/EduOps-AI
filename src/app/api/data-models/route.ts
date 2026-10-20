@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {authMiddleware} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {z} from 'zod';
@@ -13,7 +14,7 @@ import {withAudit} from '@/modules/system/server';
  * @response dataModelListSchema
  * @openapi
  */
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
     const authError = await authMiddleware(request);
     if (authError) return authError;
 
@@ -42,7 +43,7 @@ export async function GET(request: NextRequest) {
  * @response 201
  * @openapi
  */
-export async function POST(request: NextRequest) {
+async function POSTHandler(request: NextRequest) {
     const authError = await authMiddleware(request);
     if (authError) return authError;
 
@@ -63,3 +64,6 @@ export async function POST(request: NextRequest) {
         return handleAPIError(error);
     }
 }
+
+export const GET=withCompanyRoute(GETHandler);
+export const POST=withCompanyRoute(POSTHandler);

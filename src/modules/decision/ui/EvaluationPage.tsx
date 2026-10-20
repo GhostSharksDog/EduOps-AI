@@ -8,6 +8,7 @@ import type {EvaluationVO,EvaluationSummary,EvaluationScores} from '../contracts
 import {evaluationCases,evaluationDimensions,evaluationMethods} from '../contracts/evaluation';
 import MarkdownContent from '@/shared/ui/MarkdownContent';
 import {useUnsavedChanges} from '@/shared/ui/use-unsaved-changes';
+import AgentTaskComparisonPanel from './AgentTaskComparison';
 const dimensions=Object.entries(evaluationDimensions);
 function download(name:string,rows:unknown[][]){const escape=(v:unknown)=>'"'+String(v??'').replace(/^[\s]*[=+\-@]/,"'").replaceAll('"','""')+'"',blob=new Blob(['\uFEFF'+rows.map(row=>row.map(escape).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url);}
 function Answer({record}:{record:EvaluationVO}){
@@ -32,6 +33,7 @@ export default function EvaluationPage(){
  return <Flex vertical gap={18}>
   <div className="page-heading"><div><Typography.Title level={2}>研究评价</Typography.Title><Typography.Paragraph type="secondary">使用同一冻结样本比较三种生成方法，人工核对数字、证据和建议。</Typography.Paragraph></div><Button href="/dashboard/decisions">返回决策中心</Button></div>
   <Alert type="info" title="等待真实评阅，不预填分数" description="每个账号对同一样本同一方案的最新评分计入均分；历史修改保留。缺少模型输入或知识正文的旧样本不纳入严格对照。模拟经营反馈与人工评阅分别记录，评分不代表真实采用率。失败报告也可纳入，原工具方案保留失败，避免只评价成功样本。"/>
+  <Collapse items={[{key:'agent-tasks',label:'Agent任务对比 · 读取旧／新执行记录',children:<AgentTaskComparisonPanel/>}]}/>
   <div className="profile-stats">{[['样本量',summary?.samples],['严格对照样本',summary?.strictSamples],['评分人数',summary?.raters],['缺少输入记录',summary?.limitedSamples]].map(([title,n])=><Card key={String(title)}><Statistic title={title} value={loading?'—':n??'—'}/></Card>)}</div>
   {error&&<Alert type="error" title={error} action={<Button onClick={()=>void load()}>刷新已保存记录</Button>}/>}
   <Card title="严格对照汇总" extra={<Flex gap={8} wrap><Button onClick={exportRatings} disabled={!records.length}>导出评分历史</Button><Button disabled={!summary} onClick={()=>download('研究评价汇总.csv',[['方案','完成','失败','已评分样本','评分人数记录',...dimensions.map(([,v])=>v.label)],...(summary?.methods??[]).map(m=>[evaluationMethods[m.method],m.completed,m.failed,m.ratedSamples,m.ratings,...dimensions.map(([k])=>m.means?.[k as keyof EvaluationScores]??'')])])}>导出汇总</Button></Flex>}>

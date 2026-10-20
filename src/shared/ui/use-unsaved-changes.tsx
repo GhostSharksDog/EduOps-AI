@@ -7,7 +7,7 @@ const buffers=new Map<string,unknown>();
 const navigationGuards=new Map<symbol,{dirty:()=>boolean;protect:(action:()=>void)=>void}>();
 export function protectNavigation(action:()=>void){const guard=[...navigationGuards.values()].find(g=>g.dirty());if(guard)guard.protect(()=>protectNavigation(action));else action();}
 let bufferUser:string|undefined;
-function bufferKey(key:string){const user=useAuthStore.getState().user?.id;if(bufferUser!==user){buffers.clear();bufferUser=user;}return `${user??'anonymous'}:${key}`;}
+function bufferKey(key:string){const identity=useAuthStore.getState().user,user=identity?`${identity.companyCode??identity.ownedBy??'default'}:${identity.id}`:undefined;if(bufferUser!==user){buffers.clear();bufferUser=user;}return `${user??'anonymous'}:${key}`;}
 export function readEditBuffer<T>(key:string):T|undefined{return buffers.get(bufferKey(key)) as T|undefined;}
 export function writeEditBuffer<T>(key:string,value:T){buffers.set(bufferKey(key),value);}
 export function clearEditBuffer(key:string){buffers.delete(bufferKey(key));}

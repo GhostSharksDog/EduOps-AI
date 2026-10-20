@@ -33,6 +33,7 @@ export const AuditEntitySchema = z.enum([
     'BitmapTable',
     'TargetTable',
     'Session',
+    'SystemConfig',
 ]);
 
 export type AuditEntity = z.infer<typeof AuditEntitySchema>;

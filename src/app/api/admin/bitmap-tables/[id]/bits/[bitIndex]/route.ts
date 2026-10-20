@@ -1,9 +1,10 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {authMiddleware, adminMiddleware, getCurrentUser} from '@/modules/identity/server';
 import {getBitmapApplicationService} from '@/modules/tag/server';
 import {handleAPIError} from '@/platform/api-error-handler';
 
-export async function DELETE(
+async function DELETEHandler(
     request: NextRequest,
     {params}: { params: Promise<{ id: string; bitIndex: string }> }
 ) {
@@ -49,3 +50,5 @@ export async function DELETE(
         return handleAPIError(error);
     }
 }
+
+export const DELETE=withCompanyRoute(DELETEHandler);

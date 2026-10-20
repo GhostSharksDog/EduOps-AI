@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import { NextRequest, NextResponse } from 'next/server';
 import {getTagRefreshMonitorService} from '@/modules/tag/server';
 import { log } from '@/platform/logger';
@@ -9,7 +10,7 @@ import { handleAPIError } from '@/platform/api-error-handler';
  *
  * 获取未解决的刷新错误列表
  */
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   const authError = await authMiddleware(request);
   if (authError) return authError;
   const user=getCurrentUser(request);
@@ -39,3 +40,5 @@ export async function GET(request: NextRequest) {
     return handleAPIError(error);
   }
 }
+
+export const GET=withCompanyRoute(GETHandler);

@@ -37,7 +37,7 @@ export default function FinanceCanvas({dataset}:{dataset:DatasetVO}) {
  }, [token,dataset.id,applied,revision]);
  useEffect(() => {
   const next = financeHref(window.location.pathname,dataset.id,applied);
-  if(window.location.pathname+window.location.search !== next) {window.history.replaceState(window.history.state,'',next); window.dispatchEvent(new Event('education-scope-change'));}
+  if(window.location.pathname+window.location.search !== next) {window.history.replaceState(null,'',next); window.dispatchEvent(new Event('education-scope-change'));}
  }, [dataset.id,applied]);
  const annual = useMemo(() => data?.annual.map(record => ({...record,values:annualValues(record)})) ?? [], [data]);
  const valid = financeScopeSchema.safeParse(draft), sourceComplete = data && data.completeness.imported === data.completeness.expected;
@@ -56,7 +56,7 @@ export default function FinanceCanvas({dataset}:{dataset:DatasetVO}) {
   {error&&<Alert type="error" title={error} action={<Button onClick={() => setRevision(n => n+1)}>重试</Button>}/>}
   {data&&<>
    {!sourceComplete&&<Alert type="warning" title="年度数据尚未完整导入" description={`仅统计已完成的${data.completeness.imported}条，预期${data.completeness.expected}条。`}/>}
-   <div className="metric-grid">{data.metrics.map(metric => <Card key={metric.code} className="metric-card"><Typography.Text type="secondary">{metric.label} · {data.annual.at(-1)?.year??'无年度'}</Typography.Text><div style={{fontSize:30,fontWeight:750,color:'#1c4f9e'}}>{metric.value===null?'—':(metric.unit==='元'?metric.value/1e8:metric.value).toLocaleString('zh-CN',{maximumFractionDigits:2})}<small style={{fontSize:14}}> {metric.unit==='元'?'亿元':'%'}</small></div><Typography.Text type="secondary">{metric.change===null?'缺少上一年度对比':`同比 ${metric.change>=0?'+':''}${metric.change.toFixed(2)}${metric.changeUnit}`}</Typography.Text></Card>)}</div>
+   <div className="metric-grid">{data.metrics.map(metric => <Card key={metric.code} className="metric-card"><Typography.Text type="secondary">{metric.label} · {data.annual.at(-1)?.year??'无年度'}</Typography.Text><div style={{fontSize:36,fontWeight:750,color:'var(--edu-primary)',fontVariantNumeric:'tabular-nums'}}>{metric.value===null?'—':(metric.unit==='元'?metric.value/1e8:metric.value).toLocaleString('zh-CN',{maximumFractionDigits:2})}<small style={{fontSize:14}}> {metric.unit==='元'?'亿元':'%'}</small></div><Typography.Text type="secondary">{metric.change===null?'缺少上一年度对比':`同比 ${metric.change>=0?'+':''}${metric.change.toFixed(2)}${metric.changeUnit}`}</Typography.Text></Card>)}</div>
    <Card title="收入、成本与毛利年度比较"><BusinessChart title="集团年度收入成本毛利" option={chart} rows={annual.map(record => ({年度:record.year,营业收入:record.revenue,营业成本:record.cost,毛利:record.values.grossProfit}))} empty={!annual.length}/></Card>
    <Flex justify="end"><Button href={financeHref('/dashboard/decisions',dataset.id,applied)}>查看建议与任务</Button></Flex>
    <Collapse items={[

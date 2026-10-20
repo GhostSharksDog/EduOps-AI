@@ -3,6 +3,9 @@ import {useAuthStore} from '@/modules/identity/client';
 import {globalMessage} from '@/shared/lib/message';
 import {log} from '@/platform/logger';
 import {MESSAGES} from '@/shared/messages/index';
+import {assertClientSession,registerClientRequest} from './client-session';
+
+const sessionRequests=new WeakMap<object,ReturnType<typeof registerClientRequest>>();
 
 export class ApiClient {
     private static axiosInstance: AxiosInstance = axios.create({
@@ -19,13 +22,11 @@ export class ApiClient {
             (config) => {
                 // 从 localStorage 获取 token
                 if (typeof window !== 'undefined') {
-                    const token = localStorage.getItem('auth_token');
+                    const token = useAuthStore.getState().token;
                     if (token) {
                         config.headers.Authorization = `Bearer ${token}`;
-                        log.debug('API Client - Authorization header added:', `Bearer ${token.substring(0, 20)}...`);
-                    } else {
-                        log.debug('API Client - No token found in localStorage');
                     }
+                    const request=registerClientRequest(config.signal as AbortSignal|undefined);sessionRequests.set(config,request);config.signal=request.controller.signal;
                 }
                 return config;
             },
@@ -38,9 +39,11 @@ export class ApiClient {
         // 响应拦截器：处理 token 不合法或过期的情况
         this.axiosInstance.interceptors.response.use(
             (response) => {
+                const request=sessionRequests.get(response.config);request?.release();if(request)assertClientSession(request.stamp);
                 return response;
             },
             async (error) => {
+                const request=error.config?sessionRequests.get(error.config):undefined;request?.release();if(request)assertClientSession(request.stamp);
                 if (error.response) {
                     const status = error.response.status;
 

@@ -18,8 +18,10 @@ beforeAll(async()=>{
 afterAll(async()=>{await ch.dropTable(table);if(f)await f.close();});
 describe('真实标签值查询HTTP和上限边界',()=>{
  it('公开标签值按机构和名称查询真实结果',async()=>{
-  const response=await fetch(f.base+'/api/public/tags/values?tagId='+tagId+'&entityIds='+entityId,{headers:{'x-tenant-id':f.org}});expect(response.status).toBe(200);expect((await response.json()).data[0]).toMatchObject({entityId,value:'risk'});
-  const byName=await fetch(f.base+'/api/public/tags/values?tagName='+encodeURIComponent('API标签值')+'&entityIds='+entityId,{headers:{'x-tenant-id':f.org}});expect(byName.status).toBe(200);expect((await byName.json()).tagId).toBe(tagId);
+  const headers={Authorization:'Bearer '+f.users.admin.token,'x-tenant-id':f.otherOrg};
+  const response=await fetch(f.base+'/api/public/tags/values?tagId='+tagId+'&entityIds='+entityId,{headers});expect(response.status).toBe(200);expect((await response.json()).data[0]).toMatchObject({entityId,value:'risk'});
+  const byName=await fetch(f.base+'/api/public/tags/values?tagName='+encodeURIComponent('API标签值')+'&entityIds='+entityId,{headers});expect(byName.status).toBe(200);expect((await byName.json()).tagId).toBe(tagId);
+  expect((await fetch(f.base+'/api/public/tags/values?tagId='+tagId+'&entityIds='+entityId,{headers:{'x-tenant-id':f.org}})).status).toBe(401);
  });
  it('批量查询返回真实值而不为未知实体捏造值',async()=>{const body=await f.json('/api/tags/'+tagId+'/values?entityIds='+entityId+','+missingEntity);expect(body.data).toHaveLength(1);expect(body.data[0]).toMatchObject({entityId,value:'risk'});});
  it('单实体查询返回真实值且不存在实体返回404',async()=>{expect((await f.json('/api/tags/'+tagId+'/values/'+entityId)).data).toMatchObject({entityId,value:'risk'});await f.json('/api/tags/'+tagId+'/values/'+missingEntity,'GET',undefined,404);});

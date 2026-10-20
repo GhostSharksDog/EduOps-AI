@@ -1,3 +1,5 @@
+import {useCompanyUnitFixture} from '@/tests/helpers/company-unit-fixture';
+const companyId=useCompanyUnitFixture();
 import { describe, it, expect, vi, Mock, beforeEach } from 'vitest';
 import { TagCategoryApplicationServiceImpl } from '@/modules/tag/services/TagCategoryApplicationServiceImpl';
 import { TagCategoryDomainService } from '@/modules/tag/domain/services/ports/TagCategoryDomainService';
@@ -72,7 +74,7 @@ describe('TagCategoryApplicationServiceImpl', () => {
       mockDomainService.createCategory.mockResolvedValue(mockCategory);
       mockAdapter.fromEntityToTagCategoryVO.mockReturnValue(mockVO);
 
-      const command = { name: 'Test Category', description: '', orderIndex: 0, createdBy: 'user-123', ownedBy: 'user-123' };
+      const command = { name: 'Test Category', description: '', orderIndex: 0, createdBy: 'user-123', ownedBy: companyId };
       const result = await service.createCategory(command);
 
       expect(mockDomainService.createCategory).toHaveBeenCalledWith(command);
@@ -107,10 +109,10 @@ describe('TagCategoryApplicationServiceImpl', () => {
       mockDomainService.updateCategory.mockResolvedValue(mockCategory);
       mockAdapter.fromEntityToTagCategoryVO.mockReturnValue(mockVO);
 
-      const command = { categoryId: 'cat-123', name: 'updated Category', updatedBy: 'user-123', ownedBy: 'user-123' };
+      const command = { categoryId: 'cat-123', name: 'updated Category', updatedBy: 'user-123', ownedBy: companyId };
       const result = await service.updateCategory(command);
 
-      expect(mockDomainService.updateCategory).toHaveBeenCalledWith('cat-123', command, { tenantId: 'user-123' });
+      expect(mockDomainService.updateCategory).toHaveBeenCalledWith('cat-123', command, { tenantId: companyId });
       expect(result.name).toBe('Updated Category');
     });
   });
@@ -120,11 +122,11 @@ describe('TagCategoryApplicationServiceImpl', () => {
       mockDomainService.canDeleteCategory.mockResolvedValue(true);
       mockDomainService.deleteCategory.mockResolvedValue(undefined);
 
-      const command = { categoryId: 'cat-123', deletedBy: 'user-123', ownedBy: 'user-123' };
+      const command = { categoryId: 'cat-123', deletedBy: 'user-123', ownedBy: companyId };
       await service.deleteCategory(command);
 
-      expect(mockDomainService.canDeleteCategory).toHaveBeenCalledWith('cat-123', { tenantId: 'user-123' });
-      expect(mockDomainService.deleteCategory).toHaveBeenCalledWith(command, { tenantId: 'user-123' });
+      expect(mockDomainService.canDeleteCategory).toHaveBeenCalledWith('cat-123', { tenantId: companyId });
+      expect(mockDomainService.deleteCategory).toHaveBeenCalledWith(command, { tenantId: companyId });
     });
 
     it('should throw error when category cannot be deleted', async () => {
@@ -167,10 +169,10 @@ describe('TagCategoryApplicationServiceImpl', () => {
       mockDomainService.moveCategory.mockResolvedValue(mockCategory);
       mockAdapter.fromEntityToTagCategoryVO.mockReturnValue(mockVO);
 
-      const command = { categoryId: 'cat-123', newParentId: 'parent-1', updatedBy: 'user-123', ownedBy: 'user-123' };
+      const command = { categoryId: 'cat-123', newParentId: 'parent-1', updatedBy: 'user-123', ownedBy: companyId };
       const result = await service.moveCategory(command);
 
-      expect(mockDomainService.moveCategory).toHaveBeenCalledWith('cat-123', 'parent-1', { tenantId: 'user-123' });
+      expect(mockDomainService.moveCategory).toHaveBeenCalledWith('cat-123', 'parent-1', { tenantId: companyId });
       expect(result.parent?.id).toBe('parent-1');
     });
   });
@@ -182,7 +184,7 @@ describe('TagCategoryApplicationServiceImpl', () => {
       const command = { categoryIds: ['cat-1', 'cat-2', 'cat-3'], orderIndex: [0, 1, 2], updatedBy: 'user-123' };
       await service.reorderCategories(command);
 
-      expect(mockDomainService.reorderCategories).toHaveBeenCalledWith(['cat-1', 'cat-2', 'cat-3'], [0, 1, 2], {});
+      expect(mockDomainService.reorderCategories).toHaveBeenCalledWith(['cat-1', 'cat-2', 'cat-3'], [0, 1, 2], {tenantId:companyId});
     });
   });
 });

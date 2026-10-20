@@ -1,5 +1,5 @@
-import { config } from '@/platform/config/index';
 import type { NextRequest } from 'next/server';
+import {requireCompanyContext} from './company/context';
 export type TenantFilter=Record<string,unknown>;
 
 export interface TenantFilterOptions {
@@ -7,57 +7,41 @@ export interface TenantFilterOptions {
 }
 
 export function createTenantFilter(tenantId?: string): TenantFilterOptions {
-    if (!tenantId || tenantId === config.system.userId) {
-        return {};
-    }
-    return { tenantId };
+    const company=requireCompanyContext().company;
+    if(tenantId&&tenantId!==company.organizationId)throw new Error('机构与当前公司不一致');
+    return { tenantId:company.organizationId };
 }
 
 export function applyTenantFilterToWhere<T extends Record<string, unknown>>(
     where: T,
     options?: TenantFilterOptions
 ): T {
-    if (!options?.tenantId) {
-        return where;
-    }
+    const tenant=createTenantFilter(options?.tenantId);
     return {
         ...where,
-        OR: [
-            { ownedBy: options.tenantId },
-            { ownedBy: config.system.userId }
-        ]
+        ownedBy:tenant.tenantId,
     } as T;
 }
 
 /**
  * 获取当前请求的租户 ID
  * @param request - Next.js Request 对象
- * @returns 租户 ID，未登录时返回系统用户 ID
+ * @returns 已验证公司编号，缺少上下文时拒绝
  */
-export function getCurrentTenantId(request: Request | NextRequest): string {
-    const tenantId = request.headers.get('x-tenant-id');
-    return tenantId || config.system.userId;
+export function getCurrentTenantId(_request: Request | NextRequest): string {
+    return requireCompanyContext().company.organizationId;
 }
 
 /**
  * 构建历史业务的机构过滤条件
- * 兼容历史数据：系统用户创建的数据对所有租户可见
+ * 原公司历史记录仍在原公司数据库；没有跨公司系统目录。
  * @param request - Next.js Request 对象
  * @returns 机构过滤条件
  */
 export function getTenantFilter(request: Request | NextRequest): Record<string, unknown> {
     const tenantId = getCurrentTenantId(request);
     
-    if (tenantId === config.system.userId) {
-        return {};
-    }
-    
-    return {
-        OR: [
-            { ownedBy: tenantId },
-            { ownedBy: config.system.userId }
-        ]
-    };
+    return {ownedBy:tenantId};
 }
 
 /**
@@ -65,9 +49,8 @@ export function getTenantFilter(request: Request | NextRequest): Record<string, 
  * @param request - Next.js Request 对象
  * @returns true 表示启用了租户隔离
  */
-export function isTenantIsolationEnabled(request: Request | NextRequest): boolean {
-    const tenantId = request.headers.get('x-tenant-id');
-    return !!tenantId && tenantId !== config.system.userId;
+export function isTenantIsolationEnabled(_request: Request | NextRequest): boolean {
+    requireCompanyContext();return true;
 }
 
 /**
@@ -77,13 +60,9 @@ export function isTenantIsolationEnabled(request: Request | NextRequest): boolea
  * @returns true 表示验证通过，false 表示无权操作
  */
 export function verifyOwnership(entityOwnedBy: string, tenantFilter?: TenantFilterOptions): boolean {
-    // 如果没有租户过滤（系统用户），允许所有操作
-    if (!tenantFilter?.tenantId) {
-        return true;
-    }
-    
-    // 检查实体是否属于当前租户或系统用户
-    return entityOwnedBy === tenantFilter.tenantId || entityOwnedBy === config.system.userId;
+    const company=requireCompanyContext().company;
+    if(tenantFilter?.tenantId&&tenantFilter.tenantId!==company.organizationId)return false;
+    return entityOwnedBy===company.organizationId;
 }
 
 /**

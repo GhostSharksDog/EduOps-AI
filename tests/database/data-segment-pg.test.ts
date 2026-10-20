@@ -16,8 +16,9 @@ import {DatabaseSegmentRepository} from '@/modules/segment/repositories/Database
 import {DatabaseSegmentMemberRepository} from '@/modules/segment/repositories/DatabaseSegmentMemberRepository';
 import {DatabaseSegmentCalculationTaskRepository} from '@/modules/segment/repositories/DatabaseSegmentCalculationTaskRepository';
 import {ComparisonOperator,ConditionOperator,DataModelStatus,DataSourceStatus,DataSourceType,DataType,JoinMethod,SegmentCalculationType,SegmentStatus,SegmentType} from '@/shared/enums';
+import {getDefaultCompany} from '@/platform/company/registry';
 
-const organizations=[randomUUID(),randomUUID()];
+const organizations=[getDefaultCompany().organizationId,randomUUID()];
 const [org,foreignOrg]=organizations,actor=randomUUID();
 const owner={tenantId:org},foreign={tenantId:foreignOrg};
 const sources=new DatabaseDataSourceRepository(new DataSourceAdapterImpl());
@@ -40,9 +41,9 @@ afterAll(async()=>{
  if(!databaseVerified)return;
  assertTestDatabase();
  // 只清理本测试随机机构，保留其他套件和用户数据。
- await execute('UPDATE segment_condition SET parent_id=NULL WHERE owned_by=ANY($1::uuid[])',[organizations]);
+ await execute('UPDATE segment_condition SET parent_id=NULL WHERE created_by=$1',[actor]);
  for(const table of ['segment_member','segment_calculation_task','segment_condition','segment','model_column','data_model','data_sources']){
-  await execute('DELETE FROM '+table+' WHERE owned_by=ANY($1::uuid[])',[organizations]);
+  await execute('DELETE FROM '+table+' WHERE created_by=$1',[actor]);
  }
  await db.end();
 });

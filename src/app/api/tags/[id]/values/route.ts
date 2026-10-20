@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import { NextRequest, NextResponse } from 'next/server';
 import {riskTagRouteAuth as authMiddleware} from '@/modules/tag/server';
 import { handleAPIError } from '@/platform/api-error-handler';
@@ -12,7 +13,7 @@ import {getTagValueQueryApplicationService} from '@/modules/tag/server';
  * - entityIds: 逗号分隔的实体 ID 列表（最多 1000 个）
  * - versionId: 可选，版本 ID
  */
-export async function GET(
+async function GETHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -69,3 +70,5 @@ export async function GET(
     return handleAPIError(error);
   }
 }
+
+export const GET=withCompanyRoute(GETHandler);

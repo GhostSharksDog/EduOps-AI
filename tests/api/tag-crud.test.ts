@@ -29,10 +29,10 @@ describe('分类与标签实际CRUD',()=>{
    await f.json('/api/tags/'+tag.id,'DELETE');await f.json('/api/tags/target-tables/'+target.id,'DELETE');await f.json('/api/tags/target-tables/'+target.id,'GET',undefined,404);
   }finally{await ch.dropTable(name);}
  });
- it('公开目录只含已设置公开的标签，缺少机构参数明确报错',async()=>{
+ it('公开目录只含已设置公开的标签，使用验证身份且忽略伪造机构请求头',async()=>{
   const category=await f.json('/api/tag-categories','POST',{name:'API公开分类'},201),published=await f.json('/api/tags','POST',{name:'API公开标签',categoryId:category.id,dataType:'STRING',isPublic:true},201),privateTag=await f.json('/api/tags','POST',{name:'API私有标签',categoryId:category.id,dataType:'STRING'},201);
-  const response=await fetch(f.base+'/api/public/tags',{headers:{'x-tenant-id':f.org}});const body=await response.json();expect(response.status,JSON.stringify(body)).toBe(200);expect(body.items.some((v:{id:string})=>v.id===published.id)).toBe(true);expect(body.items.some((v:{id:string})=>v.id===privateTag.id)).toBe(false);
-  await f.json('/api/public/tags','GET',undefined,400,null);
+  const response=await fetch(f.base+'/api/public/tags',{headers:{Authorization:'Bearer '+f.users.admin.token,'x-tenant-id':f.otherOrg}});const body=await response.json();expect(response.status,JSON.stringify(body)).toBe(200);expect(body.items.some((v:{id:string})=>v.id===published.id)).toBe(true);expect(body.items.some((v:{id:string})=>v.id===privateTag.id)).toBe(false);
+  await f.json('/api/public/tags','GET',undefined,401,null);
  });
  it('分类批量删除返回实际删除数量且从列表消失',async()=>{
   const ids=[];for(const name of ['API批量分类A','API批量分类B'])ids.push((await f.json('/api/tag-categories','POST',{name},201)).id);
@@ -68,7 +68,7 @@ describe('分类与标签实际CRUD',()=>{
  it('分类列表不会泄漏其他机构创建记录',async()=>{
   const mine=await f.json('/api/tag-categories','POST',{name:'API专属分类'},201);
   await f.json('/api/tag-categories/'+mine.id,'GET',undefined,404,'outsider');
-  const list=await f.json('/api/tag-categories','GET',undefined,200,'outsider');expect(list.items.some((v:{id:string})=>v.id===mine.id)).toBe(false);
+  const list=await f.json('/api/tag-categories','GET',undefined,401,'outsider');expect(list.error).toBeTruthy();
  });
  it('不存在目标表的操作返回404',async()=>{
   const id='11111111-1111-4111-8111-111111111111';

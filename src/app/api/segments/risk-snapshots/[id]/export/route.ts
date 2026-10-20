@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {NextRequest} from 'next/server';
 import {z} from 'zod';
 import {authMiddleware,getCurrentUser} from '@/modules/identity/server';
@@ -8,7 +9,7 @@ import type {OperationalTagMember} from '@/modules/tag/contracts';
 const cell=(value:unknown)=>'"'+String(value??'').replace(/^([\s\u0000-\u001f]*[=+\-@])/u,"'$1").replaceAll('"','""')+'"';
 const csv=(row:unknown[])=>row.map(cell).join(',')+'\r\n';
 /** Authenticated, bounded-page export; keep the original frozen order and never fetch the full JSONB array. */
-export async function GET(request:NextRequest,{params}:{params:Promise<{id:string}>}){
+async function GETHandler(request:NextRequest,{params}:{params:Promise<{id:string}>}){
  const denied=await authMiddleware(request);if(denied)return denied;
  try{
   const id=z.uuid().parse((await params).id),org=getCurrentUser(request)!.ownedBy!,pageSize=100;
@@ -30,3 +31,5 @@ export async function GET(request:NextRequest,{params}:{params:Promise<{id:strin
   return new Response(stream,{headers:{'Content-Type':'text/csv; charset=utf-8','Content-Disposition':`attachment; filename="segment-${id}.csv"`,'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'}});
  }catch(error){return apiError(error);}
 }
+
+export const GET=withCompanyRoute(GETHandler);

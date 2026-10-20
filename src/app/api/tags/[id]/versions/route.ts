@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import {NextRequest, NextResponse} from 'next/server';
 import {z} from 'zod';
 import {riskTagRouteAuth as authMiddleware} from '@/modules/tag/server';
@@ -13,7 +14,7 @@ import {withAudit} from '@/modules/system/server';
  * @response tagVersionListSchema
  * @openapi
  */
-export async function GET(
+async function GETHandler(
     request: NextRequest,
     {params}: { params: Promise<{ id: string }> }
 ) {
@@ -46,7 +47,7 @@ export async function GET(
  * @response tagVersionListSchema
  * @openapi
  */
-export async function POST(
+async function POSTHandler(
     request: NextRequest,
     {params}: { params: Promise<{ id: string }> }
 ) {
@@ -72,3 +73,6 @@ export async function POST(
         return handleAPIError(error);
     }
 }
+
+export const GET=withCompanyRoute(GETHandler);
+export const POST=withCompanyRoute(POSTHandler);

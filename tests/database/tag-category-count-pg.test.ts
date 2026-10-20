@@ -8,8 +8,9 @@ import {TagQueryDomainServiceImpl} from '@/modules/tag/domain/services/TagQueryD
 import {TagCategoryApplicationServiceImpl} from '@/modules/tag/services/TagCategoryApplicationServiceImpl';
 import {TagCategoryOHSAdapterImpl} from '@/modules/tag/services/TagCategoryOHSAdapterImpl';
 import type {ITagFactory} from '@/modules/tag/domain/factories/ports/ITagFactory';
+import {getDefaultCompany} from '@/platform/company/registry';
 
-const orgA=randomUUID(),orgB=randomUUID(),actor=randomUUID();
+const orgA=getDefaultCompany().organizationId,orgB=randomUUID(),actor=randomUUID();
 const rootId=randomUUID(),childId=randomUUID(),emptyId=randomUUID(),foreignParentId=randomUUID();
 const tagIds=Array.from({length:7},()=>randomUUID());
 const keyword='分类计数隔离_'+randomUUID();
@@ -48,17 +49,17 @@ afterAll(async()=>{
   await db.end();
 });
 
-describe('共享分类标签数字的真实机构隔离',()=>{
-  it('批量SQL只统计当前机构和系统共享标签，排除其他机构及已删除标签',async()=>{
+describe('分类标签数字的真实机构隔离',()=>{
+  it('批量SQL只统计指定机构标签，排除其他机构及已删除标签',async()=>{
     expect(await repository.countTagsByCategoryIds([childId,emptyId],tenantA)).toEqual(new Map([[childId,3],[emptyId,0]]));
-    expect(await repository.countTagsByCategoryIds([childId],tenantB)).toEqual(new Map([[childId,4]]));
+    expect(await repository.countTagsByCategoryIds([childId],tenantB)).toEqual(new Map([[childId,3]]));
     expect(await repository.countTagsByCategoryIds([childId])).toEqual(new Map([[childId,6]]));
     expect(await repository.countTagsByCategoryIds([],tenantA)).toEqual(new Map());
   });
 
-  it('单条共享分类的tagCount遵守同一机构范围',async()=>{
+  it('单条分类的tagCount遵守同一机构范围，其他机构不能读取',async()=>{
     expect((await service.getCategory({categoryId:childId,tenantFilter:tenantA})).tagCount).toBe(3);
-    expect((await service.getCategory({categoryId:childId,tenantFilter:tenantB})).tagCount).toBe(4);
+    await expect(service.getCategory({categoryId:childId,tenantFilter:tenantB})).rejects.toThrow('分类不存在');
   });
 
   it('无parent的分类树只显示授权标签计数',async()=>{
@@ -71,9 +72,8 @@ describe('共享分类标签数字的真实机构隔离',()=>{
 
   it('指定parent的列表计数与单条查询保持一致',async()=>{
     const result=await service.listCategories({parentId:rootId,page:1,pageSize:10,tenantFilter:tenantB});
-    expect(result.totalCount).toBe(2);
-    expect(result.items.find(row=>row.id===childId)?.tagCount).toBe(4);
-    expect(result.items.find(row=>row.id===emptyId)?.tagCount).toBe(0);
+    expect(result.totalCount).toBe(0);
+    expect(result.items).toEqual([]);
   });
 
   it('排序包含外机构分类时，不会先修改前面的已授权分类',async()=>{

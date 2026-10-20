@@ -1,3 +1,5 @@
+import {useCompanyUnitFixture} from '@/tests/helpers/company-unit-fixture';
+const companyId=useCompanyUnitFixture();
 import { describe, it, expect, vi, Mock, beforeEach } from 'vitest';
 import { TagApplicationServiceImpl } from '@/modules/tag/services/TagApplicationServiceImpl';
 import { TagDomainService } from '@/modules/tag/domain/services/ports/TagDomainService';
@@ -352,7 +354,7 @@ describe('createTag', () => {
         tagId: 'tag-123',
         name: 'Updated Name',
         updatedBy: 'user-123',
-        ownedBy: 'user-123'
+        ownedBy: companyId
       };
 
       const mockTag = { id: 'tag-123', name: 'Updated Name' } as Tag;
@@ -364,7 +366,7 @@ describe('createTag', () => {
       const result = await service.updateTag(command);
 
       expect(result.name).toBe('Updated Name');
-      expect(mockTagDomainService.updateTag).toHaveBeenCalledWith(command, { tenantId: 'user-123' });
+      expect(mockTagDomainService.updateTag).toHaveBeenCalledWith(command, { tenantId: companyId });
     });
   });
 
@@ -374,7 +376,7 @@ describe('createTag', () => {
         tagId: 'tag-123',
         status: TagStatus.ACTIVE,
         updatedBy: 'user-123',
-        ownedBy: 'user-123'
+        ownedBy: companyId
       };
 
       const mockTag = { id: 'tag-123', status: TagStatus.ACTIVE } as Tag;
@@ -386,7 +388,7 @@ describe('createTag', () => {
       const result = await service.updateTagStatus(command);
 
       expect(result.status).toBe(TagStatus.ACTIVE);
-      expect(mockTagDomainService.updateTagStatus).toHaveBeenCalledWith('tag-123', TagStatus.ACTIVE, { tenantId: 'user-123' });
+      expect(mockTagDomainService.updateTagStatus).toHaveBeenCalledWith('tag-123', TagStatus.ACTIVE, { tenantId: companyId });
     });
   });
 
@@ -394,9 +396,9 @@ describe('createTag', () => {
     it('should delete tag', async () => {
       mockTagDomainService.deleteTag.mockResolvedValue(undefined);
 
-      await service.deleteTag({ tagId: 'tag-123', deletedBy: 'user-123', ownedBy: 'user-123' });
+      await service.deleteTag({ tagId: 'tag-123', deletedBy: 'user-123', ownedBy: companyId });
 
-      expect(mockTagDomainService.deleteTag).toHaveBeenCalledWith('tag-123', 'user-123', { tenantId: 'user-123' });
+      expect(mockTagDomainService.deleteTag).toHaveBeenCalledWith('tag-123', 'user-123', { tenantId: companyId });
     });
   });
 
@@ -430,7 +432,7 @@ describe('createTag', () => {
       tagId: 'tag-123',
       versionId: 'version-456',
       updatedBy: 'user-123',
-      ownedBy: 'user-123'
+      ownedBy: companyId
     };
 
     const mockVO = { id: 'tag-123', currentVersion: 'version-456' };
@@ -500,12 +502,12 @@ describe('createTag', () => {
       // 2. 按 mvc.mvName drop MV
       expect(mockChClient.dropMaterializedView).toHaveBeenCalledWith('mv_tag_tag-123_v1');
       // 3. 清理 mvc
-      expect(mockMvConfigRepository.deleteByTagId).toHaveBeenCalledWith('tag-123', { tenantId: 'user-123' });
+      expect(mockMvConfigRepository.deleteByTagId).toHaveBeenCalledWith('tag-123', { tenantId: companyId });
       // 4. 切换版本
       expect(mockTagDomainService.setCurrentVersion).toHaveBeenCalledWith(
         'tag-123',
         'version-456',
-        { tenantId: 'user-123' }
+        { tenantId: companyId }
       );
       // 5. 重连 target_table
       expect(mockTargetTableRepository.linkTag).toHaveBeenCalledWith('tt-1', 'tag-123', 'version-456');

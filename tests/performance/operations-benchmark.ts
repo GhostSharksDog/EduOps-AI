@@ -9,6 +9,7 @@ import {EducationEventsClient} from '../../src/platform/database/education-event
 import {operations,channels} from '../../src/modules/analytics/server';
 import {calculateOperations} from '../../src/modules/analytics/domain/operations';
 import type {AuthorizedScope} from '../../src/shared/contracts/analysis';
+import {runStandaloneTestCompany} from '../helpers/standalone-company';
 const args=process.argv.slice(2),value=(name:string,fallback='')=>{const i=args.indexOf(name);return i<0?fallback:args[i+1]??fallback;},has=(name:string)=>args.includes(name),events=new EducationEventsClient();
 const metricsComparable=(metrics:ReturnType<typeof calculateOperations>['metrics'])=>metrics.map(({code,numerator,denominator,value,status,unknownCount,details})=>({code,numerator,denominator,value,status,unknownCount,details}));
 const canonical=(input:unknown):unknown=>Array.isArray(input)?input.map(canonical):input&&typeof input==='object'?Object.fromEntries(Object.entries(input).sort(([a],[b])=>a.localeCompare(b)).map(([key,value])=>[key,canonical(value)])):input;
@@ -69,4 +70,4 @@ async function main(){
  const csv=['query,concurrency,cache,repetition,total_ms,request_ms,rss_peak_bytes,matches_baseline'];for(const record of records)for(const [i,s]of(record.samples as Record<string,unknown>[]).entries())csv.push([record.query,record.concurrency,record.cache,i+1,s.totalMs,'"'+(s.requests as number[]).join(';')+'"',s.rssPeakBytes,record.matchesBaseline].join(','));await writeFile(path.join(output,'measurements.csv'),'\uFEFF'+csv.join('\n')+'\n');
  console.log(JSON.stringify({output,eventRows:fixture.eventRows,passed:report.passed,groups:records.length}));if(!report.passed)process.exitCode=1;
 }
-(has('--worker')?worker().then(result=>console.log(JSON.stringify(result))):main()).catch(error=>{console.error(error instanceof Error?error.message:'经营性能核验失败');process.exitCode=1;}).finally(()=>db.end());
+Promise.resolve().then(()=>runStandaloneTestCompany(async()=>{try{if(has('--worker'))console.log(JSON.stringify(await worker()));else await main();}finally{await db.end();}})).catch(error=>{console.error(error instanceof Error?error.message:'经营性能核验失败');process.exitCode=1;});

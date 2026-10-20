@@ -1,3 +1,4 @@
+import {withCompanyRoute} from '@/modules/identity/server';
 import { NextRequest, NextResponse } from 'next/server';
 import {db} from '@/platform/database';
 import {getDbBrowserService} from '@/modules/system/server';
@@ -6,7 +7,7 @@ import {authMiddleware, adminMiddleware} from '@/modules/identity/server';
 import { handleAPIError } from '@/platform/api-error-handler';
 import { getTablesQuerySchema } from '@/shared/schemas/request/db-browser/query.schema';
 
-export async function GET(request: NextRequest) {
+async function GETHandler(request: NextRequest) {
   if (process.env.NODE_ENV === 'production') {
     return NextResponse.json({ error: '此功能仅在非生产环境可用' }, { status: 403 });
   }
@@ -40,3 +41,5 @@ export async function GET(request: NextRequest) {
     return handleAPIError(error);
   }
 }
+
+export const GET=withCompanyRoute(GETHandler);
